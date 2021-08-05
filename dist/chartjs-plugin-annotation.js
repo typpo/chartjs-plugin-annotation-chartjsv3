@@ -5,14 +5,13 @@
  * Released under the MIT License
  */
 (function (global, factory) {
-typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js'), require('chart.js-v3'), require('chartjs-v3')) :
-typeof define === 'function' && define.amd ? define(['chart.js', 'chart.js-v3', 'chartjs-v3'], factory) :
-(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global['chartjs-plugin-annotation'] = factory(global.Chart, global.ChartJsV3$1, global.ChartJsV3));
-}(this, (function (chart_js, ChartJsV3$1, ChartJsV3) { 'use strict';
+typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js'), require('chart.js-v3')) :
+typeof define === 'function' && define.amd ? define(['chart.js', 'chart.js-v3'], factory) :
+(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global['chartjs-plugin-annotation'] = factory(global.Chart, global.ChartJsV3));
+}(this, (function (chart_js, ChartJsV3) { 'use strict';
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
-var ChartJsV3__default$1 = /*#__PURE__*/_interopDefaultLegacy(ChartJsV3$1);
 var ChartJsV3__default = /*#__PURE__*/_interopDefaultLegacy(ChartJsV3);
 
 const {distanceBetweenPoints} = ChartJsV3__default['default'].helpers;
@@ -152,7 +151,7 @@ function getNearestItem(elements, position) {
     .slice(0, 1)[0]; // return only the top item
 }
 
-const {isFinite: isFinite$1} = ChartJsV3__default$1['default'].helpers;
+const {isFinite: isFinite$1} = ChartJsV3__default['default'].helpers;
 
 const PI$1 = Math.PI;
 const HALF_PI = PI$1 / 2;
@@ -224,7 +223,7 @@ function rotated(point, center, angle) {
   };
 }
 
-class BoxAnnotation extends ChartJsV3$1.Element {
+class BoxAnnotation extends ChartJsV3.Element {
   inRange(mouseX, mouseY, useFinalPosition) {
     const {x, y, width, height} = this.getProps(['x', 'y', 'width', 'height'], useFinalPosition);
 
@@ -322,7 +321,7 @@ BoxAnnotation.defaultRoutes = {
   backgroundColor: 'color'
 };
 
-const {isArray: isArray$1, toFontString, toRadians} = ChartJsV3__default$1['default'].helpers;
+const {isArray: isArray$1, toFontString, toRadians} = ChartJsV3__default['default'].helpers;
 
 const PI = Math.PI;
 const clamp = (x, from, to) => Math.min(to, Math.max(from, x));
@@ -357,7 +356,7 @@ function limitLineToArea(p1, p2, area) {
   return {x, y, x2, y2, width: Math.abs(x2 - x), height: Math.abs(y2 - y)};
 }
 
-class LineAnnotation extends ChartJsV3$1.Element {
+class LineAnnotation extends ChartJsV3.Element {
   intersects(x, y, epsilon = 0.001) {
     // Adapted from https://stackoverflow.com/a/6853926/25507
     const sqr = v => v * v;
@@ -755,9 +754,9 @@ function pointInEllipse(p, ellipse) {
   return (Math.pow(p.x - center.x, 2) / Math.pow(xRadius, 2)) + (Math.pow(p.y - center.y, 2) / Math.pow(yRadius, 2)) <= 1.0;
 }
 
-const {scaleValue} = ChartJsV3__default$1['default'].helpers;
+const {scaleValue} = ChartJsV3__default['default'].helpers;
 
-class PointAnnotation extends ChartJsV3$1.Element {
+class PointAnnotation extends ChartJsV3.Element {
 
   inRange(x, y) {
     const {width, options} = this;
@@ -842,7 +841,7 @@ PointAnnotation.defaultRoutes = {
 
 var version = "1.0.2";
 
-const {clipArea, unclipArea, isFinite, valueOrDefault, isObject, isArray} = ChartJsV3__default$1['default'].helpers;
+const {clipArea, unclipArea, isFinite, valueOrDefault, isObject, isArray} = ChartJsV3__default['default'].helpers;
 
 const chartStates = new Map();
 
@@ -854,7 +853,7 @@ const annotationTypes = {
 };
 
 Object.keys(annotationTypes).forEach(key => {
-  ChartJsV3$1.defaults.describe(`elements.${annotationTypes[key].id}`, {
+  ChartJsV3.defaults.describe(`elements.${annotationTypes[key].id}`, {
     _fallback: 'plugins.annotation'
   });
 });
@@ -865,11 +864,11 @@ var Annotation = {
   version,
 
   afterRegister() {
-    ChartJsV3$1.Chart.register(annotationTypes);
+    ChartJsV3.Chart.register(annotationTypes);
   },
 
   afterUnregister() {
-    ChartJsV3$1.Chart.unregister(annotationTypes);
+    ChartJsV3.Chart.unregister(annotationTypes);
   },
 
   beforeInit(chart) {
@@ -974,7 +973,7 @@ function resolveAnimations(chart, animOpts, mode) {
   if (mode === 'reset' || mode === 'none' || mode === 'resize') {
     return directUpdater;
   }
-  return new ChartJsV3$1.Animations(chart, animOpts);
+  return new ChartJsV3.Animations(chart, animOpts);
 }
 
 function updateElements(chart, state, options, mode) {

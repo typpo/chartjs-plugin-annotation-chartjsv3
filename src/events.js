@@ -1,4 +1,4 @@
-import ChartJsV3 from 'chartjs-v3';
+import ChartJsV3 from 'chart.js-v3';
 const {distanceBetweenPoints} = ChartJsV3.helpers;
 const callHandler = ChartJsV3.helpers.callback;
 

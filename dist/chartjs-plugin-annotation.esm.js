@@ -4,8 +4,7 @@
  * (c) 2021 chartjs-plugin-annotation Contributors
  * Released under the MIT License
  */
-import ChartJsV3$1, { Element, defaults, Chart, Animations } from 'chart.js-v3';
-import ChartJsV3 from 'chartjs-v3';
+import ChartJsV3, { Element, defaults, Chart, Animations } from 'chart.js-v3';
 
 const {distanceBetweenPoints} = ChartJsV3.helpers;
 const callHandler = ChartJsV3.helpers.callback;
@@ -144,7 +143,7 @@ function getNearestItem(elements, position) {
     .slice(0, 1)[0]; // return only the top item
 }
 
-const {isFinite: isFinite$1} = ChartJsV3$1.helpers;
+const {isFinite: isFinite$1} = ChartJsV3.helpers;
 
 const PI$1 = Math.PI;
 const HALF_PI = PI$1 / 2;
@@ -314,7 +313,7 @@ BoxAnnotation.defaultRoutes = {
   backgroundColor: 'color'
 };
 
-const {isArray: isArray$1, toFontString, toRadians} = ChartJsV3$1.helpers;
+const {isArray: isArray$1, toFontString, toRadians} = ChartJsV3.helpers;
 
 const PI = Math.PI;
 const clamp = (x, from, to) => Math.min(to, Math.max(from, x));
@@ -747,7 +746,7 @@ function pointInEllipse(p, ellipse) {
   return (Math.pow(p.x - center.x, 2) / Math.pow(xRadius, 2)) + (Math.pow(p.y - center.y, 2) / Math.pow(yRadius, 2)) <= 1.0;
 }
 
-const {scaleValue} = ChartJsV3$1.helpers;
+const {scaleValue} = ChartJsV3.helpers;
 
 class PointAnnotation extends Element {
 
@@ -834,7 +833,7 @@ PointAnnotation.defaultRoutes = {
 
 var version = "1.0.2";
 
-const {clipArea, unclipArea, isFinite, valueOrDefault, isObject, isArray} = ChartJsV3$1.helpers;
+const {clipArea, unclipArea, isFinite, valueOrDefault, isObject, isArray} = ChartJsV3.helpers;
 
 const chartStates = new Map();
 
