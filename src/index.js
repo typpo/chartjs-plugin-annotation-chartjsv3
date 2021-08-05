@@ -1,6 +1,6 @@
-import {Chart} from 'chart.js';
+// import {Chart} from 'chart.js';
 import Annotation from './annotation';
 
-Chart.register(Annotation);
+// Chart.register(Annotation);
 
 export default Annotation;

@@ -5,10 +5,10 @@
  * Released under the MIT License
  */
 (function (global, factory) {
-typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js'), require('chart.js-v3')) :
-typeof define === 'function' && define.amd ? define(['chart.js', 'chart.js-v3'], factory) :
-(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global['chartjs-plugin-annotation'] = factory(global.Chart, global.ChartJsV3));
-}(this, (function (chart_js, ChartJsV3) { 'use strict';
+typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js-v3')) :
+typeof define === 'function' && define.amd ? define(['chart.js-v3'], factory) :
+(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global['chartjs-plugin-annotation'] = factory(global.ChartJsV3));
+}(this, (function (ChartJsV3) { 'use strict';
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -1111,7 +1111,7 @@ function getScaleLimits(scale, annotations) {
   return {min, max};
 }
 
-chart_js.Chart.register(Annotation);
+// import {Chart} from 'chart.js';
 
 return Annotation;
 
