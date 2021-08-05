@@ -1,5 +1,5 @@
-import {Element} from 'chart.js';
-import {isArray, toFontString, toRadians} from 'chart.js/helpers';
+import ChartJsV3, {Element} from 'chart.js-v3';
+const {isArray, toFontString, toRadians} = ChartJsV3.helpers;
 import {scaleValue, roundedRect, rotated} from '../helpers';
 
 const PI = Math.PI;

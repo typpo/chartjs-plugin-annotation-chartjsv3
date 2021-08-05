@@ -2,7 +2,6 @@
 # Deployment
 /coverage
 /custom
-/dist
 /gh-pages
 /docs/.docusaurus
 

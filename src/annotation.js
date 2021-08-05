@@ -1,5 +1,5 @@
-import {Animations, Chart, defaults} from 'chart.js';
-import {clipArea, unclipArea, isFinite, valueOrDefault, isObject, isArray} from 'chart.js/helpers';
+import ChartJsV3, {Animations, Chart, defaults} from 'chart.js-v3';
+const {clipArea, unclipArea, isFinite, valueOrDefault, isObject, isArray} = ChartJsV3.helpers;
 import {handleEvent, hooks, updateListeners} from './events';
 import BoxAnnotation from './types/box';
 import LineAnnotation from './types/line';

@@ -1,4 +1,5 @@
-import {isFinite} from 'chart.js/helpers';
+import ChartJsV3 from 'chart.js-v3';
+const {isFinite} = ChartJsV3.helpers;
 
 const PI = Math.PI;
 const HALF_PI = PI / 2;

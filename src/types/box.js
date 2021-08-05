@@ -1,4 +1,4 @@
-import {Element} from 'chart.js';
+import {Element} from 'chart.js-v3';
 import {scaleValue, roundedRect} from '../helpers';
 
 export default class BoxAnnotation extends Element {
