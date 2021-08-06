@@ -1111,7 +1111,7 @@ function getScaleLimits(scale, annotations) {
   return {min, max};
 }
 
-// import {Chart} from 'chart.js';
+ChartJsV3.Chart.register(Annotation);
 
 return Annotation;
 
