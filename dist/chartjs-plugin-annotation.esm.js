@@ -5,7 +5,6 @@
  * Released under the MIT License
  */
 import ChartJsV3, { Element, defaults, Chart, Animations } from 'chart.js-v3';
-import { toRadians as toRadians$1 } from 'chart.js/helpers';
 
 const {distanceBetweenPoints} = ChartJsV3.helpers;
 const callHandler = ChartJsV3.helpers.callback;
@@ -286,7 +285,7 @@ BoxAnnotation.defaultRoutes = {
   backgroundColor: 'color'
 };
 
-const {addRoundedRectPath, isArray: isArray$1, toFontString, toRadians, toTRBLCorners, valueOrDefault: valueOrDefault$1} = ChartJsV3.helpers;
+const {addRoundedRectPath, isArray: isArray$1, toFontString, toRadians: toRadians$1, toTRBLCorners, valueOrDefault: valueOrDefault$1} = ChartJsV3.helpers;
 
 const PI = Math.PI;
 const pointInLine = (p1, p2, t) => ({x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y)});
@@ -617,7 +616,7 @@ function calculateLabelPosition(line, width, height, chartArea) {
   const {xAdjust, yAdjust, xPadding, yPadding, position} = label;
   const p1 = {x: line.x, y: line.y};
   const p2 = {x: line.x2, y: line.y2};
-  const rotation = label.rotation === 'auto' ? calculateAutoRotation(line) : toRadians(label.rotation);
+  const rotation = label.rotation === 'auto' ? calculateAutoRotation(line) : toRadians$1(label.rotation);
   const size = rotatedSize(width, height, rotation);
   const t = calculateT(line, position, size, chartArea);
   const pt = pointInLine(p1, p2, t);
@@ -697,6 +696,8 @@ function adjustLabelCoordinate(coordinate, labelSizes) {
   return coordinate;
 }
 
+const {toRadians} = ChartJsV3.helpers;
+
 class EllipseAnnotation extends BoxAnnotation {
 
   inRange(x, y) {
@@ -711,7 +712,7 @@ class EllipseAnnotation extends BoxAnnotation {
 
     ctx.translate(center.x, center.y);
     if (options.rotation) {
-      ctx.rotate(toRadians$1(options.rotation));
+      ctx.rotate(toRadians(options.rotation));
     }
 
     ctx.beginPath();
