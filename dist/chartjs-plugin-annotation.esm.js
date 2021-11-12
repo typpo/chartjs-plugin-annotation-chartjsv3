@@ -5,6 +5,7 @@
  * Released under the MIT License
  */
 import ChartJsV3, { Element, defaults, Chart, Animations } from 'chart.js-v3';
+import { toRadians as toRadians$1 } from 'chart.js/helpers';
 
 const {distanceBetweenPoints} = ChartJsV3.helpers;
 const callHandler = ChartJsV3.helpers.callback;
@@ -79,15 +80,16 @@ function handleMoveEvents(chart, state, event) {
   const previous = state.hovered;
   state.hovered = element;
 
-  dispatchMoveEvents(chart, state, previous, element);
+  dispatchMoveEvents(chart, state, {previous, element}, event);
 }
 
-function dispatchMoveEvents(chart, state, previous, element) {
+function dispatchMoveEvents(chart, state, elements, event) {
+  const {previous, element} = elements;
   if (previous && previous !== element) {
-    dispatchEvent(chart, state, previous.options.leave || state.listeners.leave, previous);
+    dispatchEvent(chart, previous.options.leave || state.listeners.leave, previous, event);
   }
   if (element && element !== previous) {
-    dispatchEvent(chart, state, element.options.enter || state.listeners.enter, element);
+    dispatchEvent(chart, element.options.enter || state.listeners.enter, element, event);
   }
 }
 
@@ -102,22 +104,22 @@ function handleClickEvents(chart, state, event, options) {
       // 2nd click before timeout, so its a double click
       clearTimeout(element.clickTimeout);
       delete element.clickTimeout;
-      dispatchEvent(chart, state, dblclick, element);
+      dispatchEvent(chart, dblclick, element, event);
     } else if (dblclick) {
       // if there is a dblclick handler, wait for dblClickSpeed ms before deciding its a click
       element.clickTimeout = setTimeout(() => {
         delete element.clickTimeout;
-        dispatchEvent(chart, state, click, element);
+        dispatchEvent(chart, click, element, event);
       }, options.dblClickSpeed);
     } else {
       // no double click handler, just call the click handler directly
-      dispatchEvent(chart, state, click, element);
+      dispatchEvent(chart, click, element, event);
     }
   }
 }
 
-function dispatchEvent(chart, _state, handler, element) {
-  callHandler(handler, [{chart, element}]);
+function dispatchEvent(chart, handler, element, event) {
+  callHandler(handler, [{chart, element}, event]);
 }
 
 function getNearestItem(elements, position) {
@@ -145,55 +147,18 @@ function getNearestItem(elements, position) {
 
 const {isFinite: isFinite$1} = ChartJsV3.helpers;
 
-const PI$1 = Math.PI;
-const HALF_PI = PI$1 / 2;
+const clamp = (x, from, to) => Math.min(to, Math.max(from, x));
+
+function clampAll(obj, from, to) {
+  for (const key of Object.keys(obj)) {
+    obj[key] = clamp(obj[key], from, to);
+  }
+  return obj;
+}
 
 function scaleValue$1(scale, value, fallback) {
   value = typeof value === 'number' ? value : scale.parse(value);
   return isFinite$1(value) ? scale.getPixelForValue(value) : fallback;
-}
-
-/**
- * Creates a "path" for a rectangle with rounded corners at position (x, y) with a
- * given size (width, height) and the same `radius` for all corners.
- * @param {CanvasRenderingContext2D} ctx - The canvas 2D Context.
- * @param {number} x - The x axis of the coordinate for the rectangle starting point.
- * @param {number} y - The y axis of the coordinate for the rectangle starting point.
- * @param {number} width - The rectangle's width.
- * @param {number} height - The rectangle's height.
- * @param {number} radius - The rounded amount (in pixels) for the four corners.
- * @todo handle `radius` as top-left, top-right, bottom-right, bottom-left array/object?
- */
-function roundedRect(ctx, x, y, width, height, radius) {
-  ctx.beginPath();
-  if (radius) {
-    const r = Math.min(radius, height / 2, width / 2);
-    const left = x + r;
-    const top = y + r;
-    const right = x + width - r;
-    const bottom = y + height - r;
-
-    ctx.moveTo(x, top);
-    if (left < right && top < bottom) {
-      ctx.arc(left, top, r, -PI$1, -HALF_PI);
-      ctx.arc(right, top, r, -HALF_PI, 0);
-      ctx.arc(right, bottom, r, 0, HALF_PI);
-      ctx.arc(left, bottom, r, HALF_PI, PI$1);
-    } else if (left < right) {
-      ctx.moveTo(left, y);
-      ctx.arc(right, top, r, -HALF_PI, HALF_PI);
-      ctx.arc(left, top, r, HALF_PI, PI$1 + HALF_PI);
-    } else if (top < bottom) {
-      ctx.arc(left, top, r, -PI$1, 0);
-      ctx.arc(left, bottom, r, 0, PI$1);
-    } else {
-      ctx.arc(left, top, r, -PI$1, PI$1);
-    }
-    ctx.closePath();
-    ctx.moveTo(x, y);
-  } else {
-    ctx.rect(x, y, width, height);
-  }
 }
 
 /**
@@ -214,6 +179,8 @@ function rotated(point, center, angle) {
     y: cy + sin * (point.x - cx) + cos * (point.y - cy)
   };
 }
+
+const {addRoundedRectPath: addRoundedRectPath$1, toTRBLCorners: toTRBLCorners$1, valueOrDefault: valueOrDefault$2} = ChartJsV3.helpers;
 
 class BoxAnnotation extends Element {
   inRange(mouseX, mouseY, useFinalPosition) {
@@ -245,7 +212,13 @@ class BoxAnnotation extends Element {
     ctx.setLineDash(options.borderDash);
     ctx.lineDashOffset = options.borderDashOffset;
 
-    roundedRect(ctx, x, y, width, height, options.cornerRadius);
+    ctx.beginPath();
+    addRoundedRectPath$1(ctx, {
+      x, y, w: width, h: height,
+      // TODO: v2 remove support for cornerRadius
+      radius: clampAll(toTRBLCorners$1(valueOrDefault$2(options.cornerRadius, options.borderRadius)), 0, Math.min(width, height) / 2)
+    });
+    ctx.closePath();
     ctx.fill();
 
     // If no border, don't draw it
@@ -299,7 +272,7 @@ BoxAnnotation.defaults = {
   borderDash: [],
   borderDashOffset: 0,
   borderWidth: 1,
-  cornerRadius: 0,
+  borderRadius: 0,
   xScaleID: 'x',
   xMin: undefined,
   xMax: undefined,
@@ -313,30 +286,38 @@ BoxAnnotation.defaultRoutes = {
   backgroundColor: 'color'
 };
 
-const {isArray: isArray$1, toFontString, toRadians} = ChartJsV3.helpers;
+const {addRoundedRectPath, isArray: isArray$1, toFontString, toRadians, toTRBLCorners, valueOrDefault: valueOrDefault$1} = ChartJsV3.helpers;
 
 const PI = Math.PI;
-const clamp = (x, from, to) => Math.min(to, Math.max(from, x));
 const pointInLine = (p1, p2, t) => ({x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y)});
 const interpolateX = (y, p1, p2) => pointInLine(p1, p2, Math.abs((y - p1.y) / (p2.y - p1.y))).x;
 const interpolateY = (x, p1, p2) => pointInLine(p1, p2, Math.abs((x - p1.x) / (p2.x - p1.x))).y;
 const toPercent = (s) => typeof s === 'string' && s.endsWith('%') && parseFloat(s) / 100;
 
+function isLineInArea({x, y, x2, y2}, {top, right, bottom, left}) {
+  return !(
+    (x < left && x2 < left) ||
+    (x > right && x2 > right) ||
+    (y < top && y2 < top) ||
+    (y > bottom && y2 > bottom)
+  );
+}
+
 function limitPointToArea({x, y}, p2, {top, right, bottom, left}) {
   if (x < left) {
-    y = p2.x < left ? NaN : interpolateY(left, {x, y}, p2);
+    y = interpolateY(left, {x, y}, p2);
     x = left;
   }
   if (x > right) {
-    y = p2.x > right ? NaN : interpolateY(right, {x, y}, p2);
+    y = interpolateY(right, {x, y}, p2);
     x = right;
   }
   if (y < top) {
-    x = p2.y < top ? NaN : interpolateX(top, {x, y}, p2);
+    x = interpolateX(top, {x, y}, p2);
     y = top;
   }
   if (y > bottom) {
-    x = p2.y > bottom ? NaN : interpolateX(bottom, {x, y}, p2);
+    x = interpolateX(bottom, {x, y}, p2);
     y = bottom;
   }
   return {x, y};
@@ -371,9 +352,11 @@ class LineAnnotation extends Element {
     return (sqr(x - xx) + sqr(y - yy)) < epsilon;
   }
 
-  labelIsVisible() {
+  labelIsVisible(chartArea) {
     const label = this.options.label;
-    return label && label.enabled && label.content;
+
+    const inside = !chartArea || isLineInArea(this, chartArea);
+    return inside && label && label.enabled && label.content;
   }
 
   isOnLabel(mouseX, mouseY) {
@@ -420,7 +403,7 @@ class LineAnnotation extends Element {
   }
 
   drawLabel(ctx, chartArea) {
-    if (this.labelIsVisible()) {
+    if (this.labelIsVisible(chartArea)) {
       ctx.save();
       drawLabel(ctx, this, chartArea);
       ctx.restore();
@@ -456,7 +439,10 @@ class LineAnnotation extends Element {
         y2 = scaleValue$1(yScale, options.yMax, y2);
       }
     }
-    return limitLineToArea({x, y}, {x: x2, y: y2}, chart.chartArea);
+    const inside = isLineInArea({x, y, x2, y2}, chart.chartArea);
+    return inside
+      ? limitLineToArea({x, y}, {x: x2, y: y2}, chart.chartArea)
+      : {x, y, x2, y2, width: Math.abs(x2 - x), height: Math.abs(y2 - y)};
   }
 }
 
@@ -469,6 +455,13 @@ LineAnnotation.defaults = {
   borderDashOffset: 0,
   label: {
     backgroundColor: 'rgba(0,0,0,0.8)',
+    borderCapStyle: 'butt',
+    borderColor: 'black',
+    borderDash: [],
+    borderDashOffset: 0,
+    borderJoinStyle: 'miter',
+    borderRadius: 6,
+    borderWidth: 0,
     drawTime: undefined,
     font: {
       family: undefined,
@@ -481,7 +474,6 @@ LineAnnotation.defaults = {
     xPadding: 6,
     yPadding: 6,
     rotation: 0,
-    cornerRadius: 6,
     position: 'center',
     xAdjust: 0,
     yAdjust: 0,
@@ -523,8 +515,19 @@ function drawLabel(ctx, line, chartArea) {
   ctx.rotate(rect.rotation);
 
   ctx.fillStyle = label.backgroundColor;
-  roundedRect(ctx, -(width / 2), -(height / 2), width, height, label.cornerRadius);
+  const stroke = setBorderStyle(ctx, label);
+
+  ctx.beginPath();
+  addRoundedRectPath(ctx, {
+    x: -(width / 2), y: -(height / 2), w: width, h: height,
+    // TODO: v2 remove support for cornerRadius
+    radius: clampAll(toTRBLCorners(valueOrDefault$1(label.cornerRadius, label.borderRadius)), 0, Math.min(width, height) / 2)
+  });
+  ctx.closePath();
   ctx.fill();
+  if (stroke) {
+    ctx.stroke();
+  }
 
   ctx.fillStyle = label.color;
   if (isArray$1(label.content)) {
@@ -548,6 +551,18 @@ function drawLabel(ctx, line, chartArea) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(label.content, 0, 0);
+  }
+}
+
+function setBorderStyle(ctx, options) {
+  if (options.borderWidth) {
+    ctx.lineCap = options.borderCapStyle;
+    ctx.setLineDash(options.borderDash);
+    ctx.lineDashOffset = options.borderDashOffset;
+    ctx.lineJoin = options.borderJoinStyle;
+    ctx.lineWidth = options.borderWidth;
+    ctx.strokeStyle = options.borderColor;
+    return true;
   }
 }
 
@@ -694,6 +709,11 @@ class EllipseAnnotation extends BoxAnnotation {
 
     ctx.save();
 
+    ctx.translate(center.x, center.y);
+    if (options.rotation) {
+      ctx.rotate(toRadians$1(options.rotation));
+    }
+
     ctx.beginPath();
 
     ctx.lineWidth = options.borderWidth;
@@ -703,7 +723,7 @@ class EllipseAnnotation extends BoxAnnotation {
     ctx.setLineDash(options.borderDash);
     ctx.lineDashOffset = options.borderDashOffset;
 
-    ctx.ellipse(center.x, center.y, height / 2, width / 2, Math.PI / 2, 0, 2 * Math.PI);
+    ctx.ellipse(0, 0, height / 2, width / 2, Math.PI / 2, 0, 2 * Math.PI);
 
     ctx.fill();
     ctx.stroke();
@@ -720,6 +740,7 @@ EllipseAnnotation.defaults = {
   borderDash: [],
   borderDashOffset: 0,
   borderWidth: 1,
+  rotation: 0,
   xScaleID: 'x',
   xMin: undefined,
   xMax: undefined,
