@@ -1,5 +1,5 @@
-import ChartJsV3, {Element} from 'chart.js-v3';
-const {scaleValue} = ChartJsV3.helpers;
+import {Element} from 'chart.js-v3';
+import {scaleValue} from '../helpers';
 
 export default class PointAnnotation extends Element {
 
