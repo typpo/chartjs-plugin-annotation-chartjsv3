@@ -163,7 +163,7 @@ function clampAll(obj, from, to) {
   return obj;
 }
 
-function scaleValue$1(scale, value, fallback) {
+function scaleValue(scale, value, fallback) {
   value = typeof value === 'number' ? value : scale.parse(value);
   return isFinite$1(value) ? scale.getPixelForValue(value) : fallback;
 }
@@ -247,15 +247,15 @@ class BoxAnnotation extends ChartJsV3.Element {
     }
 
     if (xScale) {
-      min = scaleValue$1(xScale, options.xMin, x);
-      max = scaleValue$1(xScale, options.xMax, x2);
+      min = scaleValue(xScale, options.xMin, x);
+      max = scaleValue(xScale, options.xMax, x2);
       x = Math.min(min, max);
       x2 = Math.max(min, max);
     }
 
     if (yScale) {
-      min = scaleValue$1(yScale, options.yMin, y2);
-      max = scaleValue$1(yScale, options.yMax, y);
+      min = scaleValue(yScale, options.yMin, y2);
+      max = scaleValue(yScale, options.yMax, y);
       y = Math.min(min, max);
       y2 = Math.max(min, max);
     }
@@ -423,8 +423,8 @@ class LineAnnotation extends ChartJsV3.Element {
     let min, max;
 
     if (scale) {
-      min = scaleValue$1(scale, options.value, NaN);
-      max = scaleValue$1(scale, options.endValue, min);
+      min = scaleValue(scale, options.value, NaN);
+      max = scaleValue(scale, options.endValue, min);
       if (scale.isHorizontal()) {
         x = min;
         x2 = max;
@@ -437,13 +437,13 @@ class LineAnnotation extends ChartJsV3.Element {
       const yScale = chart.scales[options.yScaleID];
 
       if (xScale) {
-        x = scaleValue$1(xScale, options.xMin, x);
-        x2 = scaleValue$1(xScale, options.xMax, x2);
+        x = scaleValue(xScale, options.xMin, x);
+        x2 = scaleValue(xScale, options.xMax, x2);
       }
 
       if (yScale) {
-        y = scaleValue$1(yScale, options.yMin, y);
-        y2 = scaleValue$1(yScale, options.yMax, y2);
+        y = scaleValue(yScale, options.yMin, y);
+        y2 = scaleValue(yScale, options.yMax, y2);
       }
     }
     const inside = isLineInArea({x, y, x2, y2}, chart.chartArea);
@@ -775,8 +775,6 @@ function pointInEllipse(p, ellipse) {
 
   return (Math.pow(p.x - center.x, 2) / Math.pow(xRadius, 2)) + (Math.pow(p.y - center.y, 2) / Math.pow(yRadius, 2)) <= 1.0;
 }
-
-const {scaleValue} = ChartJsV3__default['default'].helpers;
 
 class PointAnnotation extends ChartJsV3.Element {
 
