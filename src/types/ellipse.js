@@ -1,4 +1,5 @@
-import {toRadians} from 'chart.js/helpers';
+import ChartJsV3 from 'chart.js-v3';
+const {toRadians} = ChartJsV3.helpers;
 import BoxAnnotation from './box';
 
 export default class EllipseAnnotation extends BoxAnnotation {
