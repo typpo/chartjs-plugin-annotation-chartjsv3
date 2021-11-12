@@ -54,12 +54,13 @@ The following options are available for ellipse annotations.
 | [`display`](#general) | `boolean` | Yes | `true`
 | [`adjustScaleRange`](#general) | `boolean` | Yes | `true`
 | [`drawTime`](#general) | `string` | Yes | `'afterDatasetsDraw'`
+| [`rotation`](#general) | `number`| Yes | `0`
 | [`xScaleID`](#general) | `string` | Yes | `'x'`
 | [`yScaleID`](#general) | `string` | Yes | `'y'`
 | [`xMin`](#general) | `number` \| `string` | Yes | `undefined`
 | [`xMax`](#general) | `number` \| `string` | Yes | `undefined`
 | [`yMin`](#general) | `number` \| `string` | Yes | `undefined`
-| [`YMax`](#general) | `number` \| `string` | Yes | `undefined`
+| [`yMax`](#general) | `number` \| `string` | Yes | `undefined`
 | [`borderColor`](#styling) | [`Color`](../options#color) | Yes | `options.color`
 | [`borderWidth`](#styling) | `number`| Yes | `1`
 | [`borderDash`](#styling) | `number[]`| Yes | `[]`
@@ -75,6 +76,7 @@ If one of the axes does not match an axis in the chart, the ellipse will take th
 | `display` | Whether or not this annotation is visible
 | `adjustScaleRange` | Should the scale range be adjusted if this annotation is out of range
 | `drawTime` | See [drawTime](../options#draw-time)
+| `rotation` | Rotatation of the ellipse in degrees, default is 0.
 | `xScaleID` | ID of the X scale to bind onto, default is 'x'.
 | `yScaleID` | ID of the Y scale to bind onto, default is 'y'.
 | `xMin` | Left edge of the ellipse in units along the x axis.
