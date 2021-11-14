@@ -5,6 +5,7 @@
  * Released under the MIT License
  */
 import ChartJsV3, { Element, defaults, Chart, Animations } from 'chart.js-v3';
+import { Image } from 'canvas';
 
 const {distanceBetweenPoints} = ChartJsV3.helpers;
 const callHandler = ChartJsV3.helpers.callback;

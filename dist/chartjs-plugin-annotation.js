@@ -5,10 +5,10 @@
  * Released under the MIT License
  */
 (function (global, factory) {
-typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js-v3')) :
-typeof define === 'function' && define.amd ? define(['chart.js-v3'], factory) :
-(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global['chartjs-plugin-annotation'] = factory(global.ChartJsV3));
-}(this, (function (ChartJsV3) { 'use strict';
+typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js-v3'), require('canvas')) :
+typeof define === 'function' && define.amd ? define(['chart.js-v3', 'canvas'], factory) :
+(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global['chartjs-plugin-annotation'] = factory(global.ChartJsV3, global.canvas));
+}(this, (function (ChartJsV3, canvas) { 'use strict';
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -550,7 +550,7 @@ function drawLabel(ctx, line, chartArea) {
       );
       textYPosition += label.font.size + label.yPadding;
     }
-  } else if (label.content instanceof Image) {
+  } else if (label.content instanceof canvas.Image) {
     const x = -(width / 2) + label.xPadding;
     const y = -(height / 2) + label.yPadding;
     ctx.drawImage(label.content, x, y, width - (2 * label.xPadding), height - (2 * label.yPadding));
@@ -595,7 +595,7 @@ function getImageSize(size, value) {
 const widthCache = new Map();
 function measureLabel(ctx, label) {
   const content = label.content;
-  if (content instanceof Image) {
+  if (content instanceof canvas.Image) {
     return {
       width: getImageSize(content.width, label.width) + 2 * label.xPadding,
       height: getImageSize(content.height, label.height) + 2 * label.yPadding
