@@ -1,18 +1,63 @@
+const docsVersion = "VERSION";
+const base = process.env.NODE_ENV === "development" ? '/chartjs-plugin-annotation/master/' : `/chartjs-plugin-annotation/${docsVersion}/`;
+
 module.exports = {
   dest: 'dist/docs',
   title: 'chartjs-plugin-annotation',
   description: 'Annotations for Chart.js',
   theme: 'chartjs',
-  base: '/chartjs-plugin-annotation/',
+  base,
   head: [
     ['link', {rel: 'icon', href: '/favicon.png'}],
   ],
   plugins: [
+    ['flexsearch'],
     ['redirect', {
       redirectors: [
         // Default sample page when accessing /samples.
-        {base: '/samples', alternative: ['types/line']},
+        {base: '/samples', alternative: ['intro']},
       ],
+    }],
+    ['@simonbrunel/vuepress-plugin-versions', {
+      filters: {
+        suffix: (tag) => tag ? ` (${tag})` : '',
+        title: (v, vars) => window.location.href.includes('master') ? 'Development (master)' : v + (vars.tag ? ` (${tag})` : ''),
+      },
+      menu: {
+        text: '{{version|title}}',
+        items: [
+          {
+            text: 'Documentation',
+            items: [
+              {
+                text: 'Development (master)',
+                link: '/chartjs-plugin-annotation/master/',
+                target: '_self',
+              },
+              {
+                type: 'versions',
+                text: '{{version}}{{tag|suffix}}',
+                link: '/chartjs-plugin-annotation/{{version}}/',
+                exclude: /^[0]\.[0-4]\./,
+                group: 'minor',
+                target: '_self',
+              }
+            ]
+          },
+          {
+            text: 'Release notes (5 latest)',
+            items: [
+              {
+                type: 'versions',
+                limit: 5,
+                target: '_blank',
+                group: 'patch',
+                link: 'https://github.com/chartjs/chartjs-plugin-annotation/releases/tag/v{{version}}'
+              }
+            ]
+          }
+        ]
+      },
     }],
   ],
   themeConfig: {
@@ -40,33 +85,80 @@ module.exports = {
         'integration',
         'usage',
         'options',
-        'interaction',
+        'configuration',
         {
           title: 'Annotations',
           collapsable: false,
           children: [
             'types/box',
             'types/ellipse',
+            'types/label',
             'types/line',
-            'types/point'
+            'types/point',
+            'types/polygon'
           ]
         }
       ],
       '/samples/': [
         'intro',
         {
-          title: 'Types',
-          collapsable: false,
+          title: 'Box annotations',
           children: [
-            'types/box',
-            'types/ellipse',
-            'types/line',
-            'types/point'
-          ],
+            'box/basic',
+            'box/quarters',
+            'box/disclosure',
+          ]
+        },
+        {
+          title: 'Ellipse annotations',
+          children: [
+            'ellipse/basic',
+            'ellipse/rotation',
+          ]
+        },
+        {
+          title: 'Label annotations',
+          children: [
+            'label/basic',
+            'label/point',
+            'label/callout',
+            'label/lowerUpper',
+          ]
+        },
+        {
+          title: 'Line annotations',
+          children: [
+            'line/basic',
+            'line/lowerUpper',
+            'line/limited',
+            'line/average',
+            'line/standardDeviation',
+            'line/visibility',
+            'line/labelVisibility',
+            'line/datasetBars',
+            'line/animation',
+          ]
+        },
+        {
+          title: 'Point annotations',
+          children: [
+            'point/basic',
+            'point/combined',
+            'point/outsideChartArea',
+            'point/shadow',
+          ]
+        },
+        {
+          title: 'Polygon annotations',
+          children: [
+            'polygon/basic',
+            'polygon/stop',
+            'polygon/outsideChartArea',
+            'polygon/shadow',
+            ]
         },
         {
           title: 'Charts',
-          collapsable: false,
           children: [
             'charts/bar',
             'charts/line',

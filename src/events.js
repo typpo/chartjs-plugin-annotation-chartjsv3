@@ -1,13 +1,11 @@
 import ChartJsV3 from 'chart.js-v3';
-const {distanceBetweenPoints} = ChartJsV3.helpers;
-const callHandler = ChartJsV3.helpers.callback;
+const {distanceBetweenPoints, defined, callback} = ChartJsV3.helpers;
 
 const clickHooks = ['click', 'dblclick'];
 const moveHooks = ['enter', 'leave'];
 export const hooks = clickHooks.concat(moveHooks);
 
 export function updateListeners(chart, state, options) {
-  const annotations = state.annotations || [];
   state.listened = false;
   state.moveListened = false;
 
@@ -15,6 +13,8 @@ export function updateListeners(chart, state, options) {
     if (typeof options[hook] === 'function') {
       state.listened = true;
       state.listeners[hook] = options[hook];
+    } else if (defined(state.listeners[hook])) {
+      delete state.listeners[hook];
     }
   });
   moveHooks.forEach(hook => {
@@ -24,7 +24,7 @@ export function updateListeners(chart, state, options) {
   });
 
   if (!state.listened || !state.moveListened) {
-    annotations.forEach(scope => {
+    state.annotations.forEach(scope => {
       if (!state.listened) {
         clickHooks.forEach(hook => {
           if (typeof scope[hook] === 'function') {
@@ -44,22 +44,22 @@ export function updateListeners(chart, state, options) {
   }
 }
 
-export function handleEvent(chart, state, event, options) {
+export function handleEvent(state, event, options) {
   if (state.listened) {
     switch (event.type) {
     case 'mousemove':
     case 'mouseout':
-      handleMoveEvents(chart, state, event);
+      handleMoveEvents(state, event);
       break;
     case 'click':
-      handleClickEvents(chart, state, event, options);
+      handleClickEvents(state, event, options);
       break;
     default:
     }
   }
 }
 
-function handleMoveEvents(chart, state, event) {
+function handleMoveEvents(state, event) {
   if (!state.moveListened) {
     return;
   }
@@ -73,20 +73,20 @@ function handleMoveEvents(chart, state, event) {
   const previous = state.hovered;
   state.hovered = element;
 
-  dispatchMoveEvents(chart, state, {previous, element}, event);
+  dispatchMoveEvents(state, {previous, element}, event);
 }
 
-function dispatchMoveEvents(chart, state, elements, event) {
+function dispatchMoveEvents(state, elements, event) {
   const {previous, element} = elements;
   if (previous && previous !== element) {
-    dispatchEvent(chart, previous.options.leave || state.listeners.leave, previous, event);
+    dispatchEvent(previous.options.leave || state.listeners.leave, previous, event);
   }
   if (element && element !== previous) {
-    dispatchEvent(chart, element.options.enter || state.listeners.enter, element, event);
+    dispatchEvent(element.options.enter || state.listeners.enter, element, event);
   }
 }
 
-function handleClickEvents(chart, state, event, options) {
+function handleClickEvents(state, event, options) {
   const listeners = state.listeners;
   const element = getNearestItem(state.elements, event);
   if (element) {
@@ -97,22 +97,22 @@ function handleClickEvents(chart, state, event, options) {
       // 2nd click before timeout, so its a double click
       clearTimeout(element.clickTimeout);
       delete element.clickTimeout;
-      dispatchEvent(chart, dblclick, element, event);
+      dispatchEvent(dblclick, element, event);
     } else if (dblclick) {
       // if there is a dblclick handler, wait for dblClickSpeed ms before deciding its a click
       element.clickTimeout = setTimeout(() => {
         delete element.clickTimeout;
-        dispatchEvent(chart, click, element, event);
+        dispatchEvent(click, element, event);
       }, options.dblClickSpeed);
     } else {
       // no double click handler, just call the click handler directly
-      dispatchEvent(chart, click, element, event);
+      dispatchEvent(click, element, event);
     }
   }
 }
 
-function dispatchEvent(chart, handler, element, event) {
-  callHandler(handler, [{chart, element}, event]);
+function dispatchEvent(handler, element, event) {
+  callback(handler, [element.$context, event]);
 }
 
 function getNearestItem(elements, position) {

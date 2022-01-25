@@ -1,107 +1,132 @@
 import ChartJsV3, {Element} from 'chart.js-v3';
-const {addRoundedRectPath, toTRBLCorners, valueOrDefault} = ChartJsV3.helpers;
-import {clampAll, scaleValue} from '../helpers';
+const {toPadding} = ChartJsV3.helpers;
+import {drawBox, drawLabel, getRelativePosition, measureLabelSize, getRectCenterPoint, getChartRect, toPosition, inBoxRange} from '../helpers';
 
 export default class BoxAnnotation extends Element {
   inRange(mouseX, mouseY, useFinalPosition) {
-    const {x, y, width, height} = this.getProps(['x', 'y', 'width', 'height'], useFinalPosition);
-
-    return mouseX >= x &&
-			mouseX <= x + width &&
-			mouseY >= y &&
-			mouseY <= y + height;
+    return inBoxRange(mouseX, mouseY, this.getProps(['x', 'y', 'width', 'height'], useFinalPosition), this.options.borderWidth);
   }
 
   getCenterPoint(useFinalPosition) {
-    const {x, y, width, height} = this.getProps(['x', 'y', 'width', 'height'], useFinalPosition);
-    return {
-      x: x + width / 2,
-      y: y + height / 2
-    };
+    return getRectCenterPoint(this.getProps(['x', 'y', 'width', 'height'], useFinalPosition));
   }
 
   draw(ctx) {
+    ctx.save();
+    drawBox(ctx, this, this.options);
+    ctx.restore();
+  }
+
+  drawLabel(ctx) {
     const {x, y, width, height, options} = this;
+    const {label, borderWidth} = options;
+    const halfBorder = borderWidth / 2;
+    const position = toPosition(label.position);
+    const padding = toPadding(label.padding);
+    const labelSize = measureLabelSize(ctx, label);
+    const labelRect = {
+      x: calculateX(this, labelSize, position, padding),
+      y: calculateY(this, labelSize, position, padding),
+      width: labelSize.width,
+      height: labelSize.height
+    };
 
     ctx.save();
-
-    ctx.lineWidth = options.borderWidth;
-    ctx.strokeStyle = options.borderColor;
-    ctx.fillStyle = options.backgroundColor;
-
-    ctx.setLineDash(options.borderDash);
-    ctx.lineDashOffset = options.borderDashOffset;
-
     ctx.beginPath();
-    addRoundedRectPath(ctx, {
-      x, y, w: width, h: height,
-      // TODO: v2 remove support for cornerRadius
-      radius: clampAll(toTRBLCorners(valueOrDefault(options.cornerRadius, options.borderRadius)), 0, Math.min(width, height) / 2)
-    });
-    ctx.closePath();
-    ctx.fill();
-
-    // If no border, don't draw it
-    if (options.borderWidth) {
-      ctx.stroke();
-    }
-
+    ctx.rect(x + halfBorder + padding.left, y + halfBorder + padding.top,
+      width - borderWidth - padding.width, height - borderWidth - padding.height);
+    ctx.clip();
+    drawLabel(ctx, labelRect, label);
     ctx.restore();
   }
 
   resolveElementProperties(chart, options) {
-    const xScale = chart.scales[options.xScaleID];
-    const yScale = chart.scales[options.yScaleID];
-    let {top: y, left: x, bottom: y2, right: x2} = chart.chartArea;
-    let min, max;
-
-    if (!xScale && !yScale) {
-      return {options: {}};
-    }
-
-    if (xScale) {
-      min = scaleValue(xScale, options.xMin, x);
-      max = scaleValue(xScale, options.xMax, x2);
-      x = Math.min(min, max);
-      x2 = Math.max(min, max);
-    }
-
-    if (yScale) {
-      min = scaleValue(yScale, options.yMin, y2);
-      max = scaleValue(yScale, options.yMax, y);
-      y = Math.min(min, max);
-      y2 = Math.max(min, max);
-    }
-
-    return {
-      x,
-      y,
-      x2,
-      y2,
-      width: x2 - x,
-      height: y2 - y
-    };
+    return getChartRect(chart, options);
   }
 }
 
 BoxAnnotation.id = 'boxAnnotation';
 
 BoxAnnotation.defaults = {
-  display: true,
   adjustScaleRange: true,
+  backgroundShadowColor: 'transparent',
+  borderCapStyle: 'butt',
   borderDash: [],
   borderDashOffset: 0,
-  borderWidth: 1,
+  borderJoinStyle: 'miter',
   borderRadius: 0,
-  xScaleID: 'x',
-  xMin: undefined,
+  borderShadowColor: 'transparent',
+  borderWidth: 1,
+  cornerRadius: undefined, // TODO: v2 remove support for cornerRadius
+  display: true,
+  label: {
+    borderWidth: undefined,
+    color: 'black',
+    content: null,
+    drawTime: undefined,
+    enabled: false,
+    font: {
+      family: undefined,
+      lineHeight: undefined,
+      size: undefined,
+      style: undefined,
+      weight: 'bold'
+    },
+    height: undefined,
+    padding: 6,
+    position: 'center',
+    textAlign: 'start',
+    xAdjust: 0,
+    yAdjust: 0,
+    width: undefined
+  },
+  shadowBlur: 0,
+  shadowOffsetX: 0,
+  shadowOffsetY: 0,
   xMax: undefined,
-  yScaleID: 'y',
+  xMin: undefined,
+  xScaleID: 'x',
+  yMax: undefined,
   yMin: undefined,
-  yMax: undefined
+  yScaleID: 'y'
 };
 
 BoxAnnotation.defaultRoutes = {
   borderColor: 'color',
   backgroundColor: 'color'
 };
+
+BoxAnnotation.descriptors = {
+  label: {
+    _fallback: true
+  }
+};
+
+function calculateX(box, labelSize, position, padding) {
+  const {x: start, x2: end, width: size, options} = box;
+  const {xAdjust: adjust, borderWidth} = options.label;
+  return calculatePosition({start, end, size}, {
+    position: position.x,
+    padding: {start: padding.left, end: padding.right},
+    adjust, borderWidth,
+    size: labelSize.width
+  });
+}
+
+function calculateY(box, labelSize, position, padding) {
+  const {y: start, y2: end, height: size, options} = box;
+  const {yAdjust: adjust, borderWidth} = options.label;
+  return calculatePosition({start, end, size}, {
+    position: position.y,
+    padding: {start: padding.top, end: padding.bottom},
+    adjust, borderWidth,
+    size: labelSize.height
+  });
+}
+
+function calculatePosition(boxOpts, labelOpts) {
+  const {start, end} = boxOpts;
+  const {position, padding: {start: padStart, end: padEnd}, adjust, borderWidth} = labelOpts;
+  const availableSize = end - borderWidth - start - padStart - padEnd - labelOpts.size;
+  return start + borderWidth / 2 + adjust + padStart + getRelativePosition(availableSize, position);
+}
