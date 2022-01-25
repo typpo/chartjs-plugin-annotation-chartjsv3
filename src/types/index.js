@@ -1,4 +1,4 @@
-import {defaults} from 'chart.js';
+import {defaults} from 'chart.js-v3';
 import BoxAnnotation from './box';
 import LineAnnotation from './line';
 import EllipseAnnotation from './ellipse';
