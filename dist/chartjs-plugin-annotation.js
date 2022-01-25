@@ -5,10 +5,10 @@
  * Released under the MIT License
  */
 (function (global, factory) {
-typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js-v3'), require('chart.js'), require('canvas')) :
-typeof define === 'function' && define.amd ? define(['chart.js-v3', 'chart.js', 'canvas'], factory) :
-(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global["chartjs-plugin-annotation"] = factory(global.ChartJsV3, global.Chart, global.canvas));
-})(this, (function (ChartJsV3, chart_js, canvas) { 'use strict';
+typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js-v3'), require('canvas')) :
+typeof define === 'function' && define.amd ? define(['chart.js-v3', 'canvas'], factory) :
+(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global["chartjs-plugin-annotation"] = factory(global.ChartJsV3, global.canvas));
+})(this, (function (ChartJsV3, canvas) { 'use strict';
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -1718,7 +1718,7 @@ const annotationTypes = {
  * - annotation plugin defaults (defaults.plugins.annotation, this is what we are registering here)
  */
 Object.keys(annotationTypes).forEach(key => {
-  chart_js.defaults.describe(`elements.${annotationTypes[key].id}`, {
+  ChartJsV3.defaults.describe(`elements.${annotationTypes[key].id}`, {
     _fallback: 'plugins.annotation'
   });
 });

@@ -4,8 +4,7 @@
  * (c) 2022 chartjs-plugin-annotation Contributors
  * Released under the MIT License
  */
-import ChartJsV3, { Element, Chart, Animations } from 'chart.js-v3';
-import { defaults } from 'chart.js';
+import ChartJsV3, { Element, defaults, Chart, Animations } from 'chart.js-v3';
 import { Image as Image$1 } from 'canvas';
 
 const {distanceBetweenPoints, defined: defined$2, callback} = ChartJsV3.helpers;
