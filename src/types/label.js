@@ -1,6 +1,6 @@
 import {drawBox, drawLabel, measureLabelSize, getChartPoint, getRectCenterPoint, toPosition, setBorderStyle, getSize, inBoxRange, isBoundToPoint, getChartRect, getRelativePosition} from '../helpers';
-import {color, toPadding} from 'chart.js/helpers';
-import {Element} from 'chart.js';
+import ChartJsV3, {Element} from 'chart.js-v3';
+const {color, toPadding} = ChartJsV3.helpers;
 
 export default class LabelAnnotation extends Element {
 

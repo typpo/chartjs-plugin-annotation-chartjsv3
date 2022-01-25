@@ -1,4 +1,5 @@
-import {isFinite, valueOrDefault, defined} from 'chart.js/helpers';
+import ChartJsV3 from 'chart.js-v3';
+const {isFinite, valueOrDefault, defined} = ChartJsV3.helpers;
 
 export function adjustScaleRange(chart, scale, annotations) {
   const range = getScaleLimits(scale, annotations);

@@ -5,16 +5,16 @@
  * Released under the MIT License
  */
 (function (global, factory) {
-typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js-v3'), require('chart.js/helpers'), require('chart.js'), require('canvas')) :
-typeof define === 'function' && define.amd ? define(['chart.js-v3', 'chart.js/helpers', 'chart.js', 'canvas'], factory) :
-(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global["chartjs-plugin-annotation"] = factory(global.ChartJsV3, global.Chart.helpers, global.Chart, global.canvas));
-})(this, (function (ChartJsV3, helpers, chart_js, canvas) { 'use strict';
+typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('chart.js-v3'), require('chart.js'), require('canvas')) :
+typeof define === 'function' && define.amd ? define(['chart.js-v3', 'chart.js', 'canvas'], factory) :
+(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global["chartjs-plugin-annotation"] = factory(global.ChartJsV3, global.Chart, global.canvas));
+})(this, (function (ChartJsV3, chart_js, canvas) { 'use strict';
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
 var ChartJsV3__default = /*#__PURE__*/_interopDefaultLegacy(ChartJsV3);
 
-const {distanceBetweenPoints, defined: defined$1, callback} = ChartJsV3__default["default"].helpers;
+const {distanceBetweenPoints, defined: defined$2, callback} = ChartJsV3__default["default"].helpers;
 
 const clickHooks = ['click', 'dblclick'];
 const moveHooks = ['enter', 'leave'];
@@ -28,7 +28,7 @@ function updateListeners(chart, state, options) {
     if (typeof options[hook] === 'function') {
       state.listened = true;
       state.listeners[hook] = options[hook];
-    } else if (defined$1(state.listeners[hook])) {
+    } else if (defined$2(state.listeners[hook])) {
       delete state.listeners[hook];
     }
   });
@@ -152,6 +152,8 @@ function getNearestItem(elements, position) {
     .slice(0, 1)[0]; // return only the top item
 }
 
+const {isFinite: isFinite$1, valueOrDefault: valueOrDefault$2, defined: defined$1} = ChartJsV3__default["default"].helpers;
+
 function adjustScaleRange(chart, scale, annotations) {
   const range = getScaleLimits(scale, annotations);
   let changed = changeScaleLimit(scale, range, 'min', 'suggestedMin');
@@ -168,7 +170,7 @@ function verifyScaleOptions(annotations, scales) {
 }
 
 function changeScaleLimit(scale, range, limit, suggestedLimit) {
-  if (helpers.isFinite(range[limit]) && !scaleLimitDefined(scale.options, limit, suggestedLimit)) {
+  if (isFinite$1(range[limit]) && !scaleLimitDefined(scale.options, limit, suggestedLimit)) {
     const changed = scale[limit] !== range[limit];
     scale[limit] = range[limit];
     return changed;
@@ -176,7 +178,7 @@ function changeScaleLimit(scale, range, limit, suggestedLimit) {
 }
 
 function scaleLimitDefined(scaleOptions, limit, suggestedLimit) {
-  return helpers.defined(scaleOptions[limit]) || helpers.defined(scaleOptions[suggestedLimit]);
+  return defined$1(scaleOptions[limit]) || defined$1(scaleOptions[suggestedLimit]);
 }
 
 function verifyScaleIDs(annotation, scales) {
@@ -192,8 +194,8 @@ function getScaleLimits(scale, annotations) {
   const scaleID = scale.id;
   const scaleIDOption = axis + 'ScaleID';
   const limits = {
-    min: helpers.valueOrDefault(scale.min, Number.NEGATIVE_INFINITY),
-    max: helpers.valueOrDefault(scale.max, Number.POSITIVE_INFINITY)
+    min: valueOrDefault$2(scale.min, Number.NEGATIVE_INFINITY),
+    max: valueOrDefault$2(scale.max, Number.POSITIVE_INFINITY)
   };
   for (const annotation of annotations) {
     if (annotation.scaleID === scaleID) {
@@ -208,7 +210,7 @@ function getScaleLimits(scale, annotations) {
 function updateLimits(annotation, scale, props, limits) {
   for (const prop of props) {
     const raw = annotation[prop];
-    if (helpers.defined(raw)) {
+    if (defined$1(raw)) {
       const value = scale.parse(raw);
       limits.min = Math.min(limits.min, value);
       limits.max = Math.max(limits.max, value);
@@ -607,7 +609,7 @@ function resolvePointPosition(chart, options) {
   return getChartCircle(chart, options);
 }
 
-const {toPadding: toPadding$1} = ChartJsV3__default["default"].helpers;
+const {toPadding: toPadding$2} = ChartJsV3__default["default"].helpers;
 
 class BoxAnnotation extends ChartJsV3.Element {
   inRange(mouseX, mouseY, useFinalPosition) {
@@ -629,7 +631,7 @@ class BoxAnnotation extends ChartJsV3.Element {
     const {label, borderWidth} = options;
     const halfBorder = borderWidth / 2;
     const position = toPosition(label.position);
-    const padding = toPadding$1(label.padding);
+    const padding = toPadding$2(label.padding);
     const labelSize = measureLabelSize(ctx, label);
     const labelRect = {
       x: calculateX(this, labelSize, position, padding),
@@ -738,7 +740,7 @@ function calculatePosition$1(boxOpts, labelOpts) {
   return start + borderWidth / 2 + adjust + padStart + getRelativePosition(availableSize, position);
 }
 
-const {PI: PI$1, toRadians: toRadians$1, toPadding} = ChartJsV3__default["default"].helpers;
+const {PI: PI$2, toRadians: toRadians$1, toPadding: toPadding$1} = ChartJsV3__default["default"].helpers;
 
 const pointInLine = (p1, p2, t) => ({x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y)});
 const interpolateX = (y, p1, p2) => pointInLine(p1, p2, Math.abs((y - p1.y) / (p2.y - p1.y))).x;
@@ -1062,7 +1064,7 @@ function calculateAutoRotation(line) {
   const {x, y, x2, y2} = line;
   const rotation = Math.atan2(y2 - y, x2 - x);
   // Flip the rotation if it goes > PI/2 or < -PI/2, so label stays upright
-  return rotation > PI$1 / 2 ? rotation - PI$1 : rotation < PI$1 / -2 ? rotation + PI$1 : rotation;
+  return rotation > PI$2 / 2 ? rotation - PI$2 : rotation < PI$2 / -2 ? rotation + PI$2 : rotation;
 }
 
 // TODO: v2 remove support for xPadding and yPadding
@@ -1071,7 +1073,7 @@ function getPadding(padding, xPadding, yPadding) {
   if (xPadding || yPadding) {
     tempPadding = {x: xPadding || 6, y: yPadding || 6};
   }
-  return toPadding(tempPadding);
+  return toPadding$1(tempPadding);
 }
 
 function calculateLabelPosition(line, label, sizes, chartArea) {
@@ -1202,7 +1204,7 @@ function drawArrowHead(ctx, offset, adjust, arrowOpts) {
   ctx.stroke();
 }
 
-const {PI, toRadians} = ChartJsV3__default["default"].helpers;
+const {PI: PI$1, toRadians} = ChartJsV3__default["default"].helpers;
 
 class EllipseAnnotation extends ChartJsV3.Element {
 
@@ -1228,7 +1230,7 @@ class EllipseAnnotation extends ChartJsV3.Element {
     ctx.beginPath();
     ctx.fillStyle = options.backgroundColor;
     const stroke = setBorderStyle(ctx, options);
-    ctx.ellipse(0, 0, height / 2, width / 2, PI / 2, 0, 2 * PI);
+    ctx.ellipse(0, 0, height / 2, width / 2, PI$1 / 2, 0, 2 * PI$1);
     ctx.fill();
     if (stroke) {
       ctx.shadowColor = options.borderShadowColor;
@@ -1289,7 +1291,9 @@ function pointInEllipse(p, ellipse, rotation, borderWidth) {
   return (a / Math.pow(xRadius + hBorderWidth, 2)) + (b / Math.pow(yRadius + hBorderWidth, 2)) <= 1.0001;
 }
 
-class LabelAnnotation extends chart_js.Element {
+const {color, toPadding} = ChartJsV3__default["default"].helpers;
+
+class LabelAnnotation extends ChartJsV3.Element {
 
   inRange(mouseX, mouseY, useFinalPosition) {
     return inBoxRange(mouseX, mouseY, this.getProps(['x', 'y', 'width', 'height'], useFinalPosition), this.options.borderWidth);
@@ -1314,10 +1318,10 @@ class LabelAnnotation extends chart_js.Element {
   // TODO: make private in v2
   resolveElementProperties(chart, options) {
     const point = !isBoundToPoint(options) ? getRectCenterPoint(getChartRect(chart, options)) : getChartPoint(chart, options);
-    const padding = helpers.toPadding(options.padding);
+    const padding = toPadding(options.padding);
     const labelSize = measureLabelSize(chart.ctx, options);
     const boxSize = measureRect(point, labelSize, options, padding);
-    const bgColor = helpers.color(options.backgroundColor);
+    const bgColor = color(options.backgroundColor);
     const boxVisible = options.borderWidth > 0 || (bgColor && bgColor.valid && bgColor.rgb.a > 0);
 
     const properties = {
@@ -1582,7 +1586,9 @@ PointAnnotation.defaultRoutes = {
   backgroundColor: 'color'
 };
 
-class PolygonAnnotation extends chart_js.Element {
+const {PI, RAD_PER_DEG} = ChartJsV3__default["default"].helpers;
+
+class PolygonAnnotation extends ChartJsV3.Element {
   inRange(mouseX, mouseY, useFinalPosition) {
     return this.options.radius >= 0.1 && this.elements.length > 1 && pointIsInPolygon(this.elements, mouseX, mouseY, useFinalPosition);
   }
@@ -1622,8 +1628,8 @@ class PolygonAnnotation extends chart_js.Element {
     const {sides, radius, rotation, borderWidth} = options;
     const halfBorder = borderWidth / 2;
     const elements = [];
-    const angle = (2 * helpers.PI) / sides;
-    let rad = rotation * helpers.RAD_PER_DEG;
+    const angle = (2 * PI) / sides;
+    let rad = rotation * RAD_PER_DEG;
     for (let i = 0; i < sides; i++, rad += angle) {
       const sin = Math.sin(rad);
       const cos = Math.cos(rad);

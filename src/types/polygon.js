@@ -1,5 +1,5 @@
-import {Element} from 'chart.js';
-import {PI, RAD_PER_DEG} from 'chart.js/helpers';
+import ChartJsV3, {Element} from 'chart.js-v3';
+const {PI, RAD_PER_DEG} = ChartJsV3.helpers;
 import {setBorderStyle, resolvePointPosition, getElementCenterPoint, setShadowStyle} from '../helpers';
 
 export default class PolygonAnnotation extends Element {
