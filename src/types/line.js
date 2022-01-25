@@ -1,14 +1,11 @@
 import ChartJsV3, {Element} from 'chart.js-v3';
-const {addRoundedRectPath, isArray, toFontString, toRadians, toTRBLCorners, valueOrDefault} = ChartJsV3.helpers;
-import {clamp, clampAll, scaleValue, rotated} from '../helpers';
+const {PI, toRadians, toPadding} = ChartJsV3.helpers;
+import {clamp, scaleValue, rotated, drawBox, drawLabel, measureLabelSize, getRelativePosition, setBorderStyle, setShadowStyle} from '../helpers';
 
-import {Image as CanvasImage} from 'canvas';
-
-const PI = Math.PI;
 const pointInLine = (p1, p2, t) => ({x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y)});
 const interpolateX = (y, p1, p2) => pointInLine(p1, p2, Math.abs((y - p1.y) / (p2.y - p1.y))).x;
 const interpolateY = (x, p1, p2) => pointInLine(p1, p2, Math.abs((x - p1.x) / (p2.x - p1.x))).y;
-const toPercent = (s) => typeof s === 'string' && s.endsWith('%') && parseFloat(s) / 100;
+const sqr = v => v * v;
 
 function isLineInArea({x, y, x2, y2}, {top, right, bottom, left}) {
   return !(
@@ -46,10 +43,11 @@ function limitLineToArea(p1, p2, area) {
 }
 
 export default class LineAnnotation extends Element {
-  intersects(x, y, epsilon = 0.001) {
+
+  // TODO: make private in v2
+  intersects(x, y, epsilon = 0.001, useFinalPosition) {
     // Adapted from https://stackoverflow.com/a/6853926/25507
-    const sqr = v => v * v;
-    const {x: x1, y: y1, x2, y2} = this;
+    const {x: x1, y: y1, x2, y2} = this.getProps(['x', 'y', 'x2', 'y2'], useFinalPosition);
     const dx = x2 - x1;
     const dy = y2 - y1;
     const lenSq = sqr(dx) + sqr(dy);
@@ -68,29 +66,37 @@ export default class LineAnnotation extends Element {
     return (sqr(x - xx) + sqr(y - yy)) < epsilon;
   }
 
-  labelIsVisible(chartArea) {
-    const label = this.options.label;
-
-    const inside = !chartArea || isLineInArea(this, chartArea);
-    return inside && label && label.enabled && label.content;
-  }
-
-  isOnLabel(mouseX, mouseY) {
-    const {labelRect} = this;
-    if (!labelRect || !this.labelIsVisible()) {
+  /**
+   * @todo make private in v2
+   * @param {boolean} useFinalPosition - use the element's animation target instead of current position
+   * @param {top, right, bottom, left} [chartArea] - optional, area of the chart
+   * @returns {boolean} true if the label is visible
+   */
+  labelIsVisible(useFinalPosition, chartArea) {
+    const labelOpts = this.options.label;
+    if (!labelOpts || !labelOpts.enabled) {
       return false;
     }
-
-    const {x, y} = rotated({x: mouseX, y: mouseY}, labelRect, -labelRect.rotation);
-    const w2 = labelRect.width / 2;
-    const h2 = labelRect.height / 2;
-    return x >= labelRect.x - w2 && x <= labelRect.x + w2 &&
-      y >= labelRect.y - h2 && y <= labelRect.y + h2;
+    return !chartArea || isLineInArea(this.getProps(['x', 'y', 'x2', 'y2'], useFinalPosition), chartArea);
   }
 
-  inRange(x, y) {
-    const epsilon = this.options.borderWidth || 1;
-    return this.intersects(x, y, epsilon) || this.isOnLabel(x, y);
+  // TODO: make private in v2
+  isOnLabel(mouseX, mouseY, useFinalPosition) {
+    if (!this.labelIsVisible(useFinalPosition)) {
+      return false;
+    }
+    const {labelX, labelY, labelWidth, labelHeight, labelRotation} = this.getProps(['labelX', 'labelY', 'labelWidth', 'labelHeight', 'labelRotation'], useFinalPosition);
+    const {x, y} = rotated({x: mouseX, y: mouseY}, {x: labelX, y: labelY}, -labelRotation);
+    const hBorderWidth = this.options.label.borderWidth / 2 || 0;
+    const w2 = labelWidth / 2 + hBorderWidth;
+    const h2 = labelHeight / 2 + hBorderWidth;
+    return x >= labelX - w2 && x <= labelX + w2 &&
+      y >= labelY - h2 && y <= labelY + h2;
+  }
+
+  inRange(mouseX, mouseY, useFinalPosition) {
+    const epsilon = sqr(this.options.borderWidth / 2);
+    return this.intersects(mouseX, mouseY, epsilon, useFinalPosition) || this.isOnLabel(mouseX, mouseY, useFinalPosition);
   }
 
   getCenterPoint() {
@@ -102,28 +108,55 @@ export default class LineAnnotation extends Element {
 
   draw(ctx) {
     const {x, y, x2, y2, options} = this;
+
     ctx.save();
+    if (!setBorderStyle(ctx, options)) {
+      // no border width, then line is not drawn
+      return ctx.restore();
+    }
+    setShadowStyle(ctx, options);
+    const angle = Math.atan2(y2 - y, x2 - x);
+    const length = Math.sqrt(Math.pow(x2 - x, 2) + Math.pow(y2 - y, 2));
+    const {startOpts, endOpts, startAdjust, endAdjust} = getArrowHeads(this);
 
-    ctx.lineWidth = options.borderWidth;
-    ctx.strokeStyle = options.borderColor;
-    ctx.setLineDash(options.borderDash);
-    ctx.lineDashOffset = options.borderDashOffset;
-
-    // Draw
+    ctx.translate(x, y);
+    ctx.rotate(angle);
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x2, y2);
+    ctx.moveTo(0 + startAdjust, 0);
+    ctx.lineTo(length - endAdjust, 0);
+    ctx.shadowColor = options.borderShadowColor;
     ctx.stroke();
-
+    drawArrowHead(ctx, 0, startAdjust, startOpts);
+    drawArrowHead(ctx, length, -endAdjust, endOpts);
     ctx.restore();
   }
 
   drawLabel(ctx, chartArea) {
-    if (this.labelIsVisible(chartArea)) {
-      ctx.save();
-      drawLabel(ctx, this, chartArea);
-      ctx.restore();
+    if (!this.labelIsVisible(false, chartArea)) {
+      return;
     }
+    const {labelX, labelY, labelWidth, labelHeight, labelRotation, labelPadding, labelTextSize, options: {label}} = this;
+
+    ctx.save();
+    ctx.translate(labelX, labelY);
+    ctx.rotate(labelRotation);
+
+    const boxRect = {
+      x: -(labelWidth / 2),
+      y: -(labelHeight / 2),
+      width: labelWidth,
+      height: labelHeight
+    };
+    drawBox(ctx, boxRect, label);
+
+    const labelTextRect = {
+      x: -(labelWidth / 2) + labelPadding.left + label.borderWidth / 2,
+      y: -(labelHeight / 2) + labelPadding.top + label.borderWidth / 2,
+      width: labelTextSize.width,
+      height: labelTextSize.height
+    };
+    drawLabel(ctx, labelTextRect, label);
+    ctx.restore();
   }
 
   resolveElementProperties(chart, options) {
@@ -156,61 +189,136 @@ export default class LineAnnotation extends Element {
       }
     }
     const inside = isLineInArea({x, y, x2, y2}, chart.chartArea);
-    return inside
+    const properties = inside
       ? limitLineToArea({x, y}, {x: x2, y: y2}, chart.chartArea)
       : {x, y, x2, y2, width: Math.abs(x2 - x), height: Math.abs(y2 - y)};
+
+    const label = options.label;
+    if (label && label.content) {
+      return loadLabelRect(properties, chart, label);
+    }
+    return properties;
   }
 }
 
 LineAnnotation.id = 'lineAnnotation';
+
+const arrowHeadsDefaults = {
+  backgroundColor: undefined,
+  backgroundShadowColor: undefined,
+  borderColor: undefined,
+  borderDash: undefined,
+  borderDashOffset: undefined,
+  borderShadowColor: undefined,
+  borderWidth: undefined,
+  enabled: undefined,
+  fill: undefined,
+  length: undefined,
+  shadowBlur: undefined,
+  shadowOffsetX: undefined,
+  shadowOffsetY: undefined,
+  width: undefined
+};
+
 LineAnnotation.defaults = {
-  display: true,
   adjustScaleRange: true,
-  borderWidth: 2,
+  arrowHeads: {
+    enabled: false,
+    end: Object.assign({}, arrowHeadsDefaults),
+    fill: false,
+    length: 12,
+    start: Object.assign({}, arrowHeadsDefaults),
+    width: 6
+  },
   borderDash: [],
   borderDashOffset: 0,
+  borderShadowColor: 'transparent',
+  borderWidth: 2,
+  display: true,
+  endValue: undefined,
   label: {
     backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundShadowColor: 'transparent',
     borderCapStyle: 'butt',
     borderColor: 'black',
     borderDash: [],
     borderDashOffset: 0,
     borderJoinStyle: 'miter',
     borderRadius: 6,
+    borderShadowColor: 'transparent',
     borderWidth: 0,
+    color: '#fff',
+    content: null,
+    cornerRadius: undefined, // TODO: v2 remove support for cornerRadius
     drawTime: undefined,
+    enabled: false,
     font: {
       family: undefined,
       lineHeight: undefined,
       size: undefined,
-      style: 'bold',
-      weight: undefined
+      style: undefined,
+      weight: 'bold'
     },
-    color: '#fff',
-    xPadding: 6,
-    yPadding: 6,
-    rotation: 0,
+    height: undefined,
+    padding: 6,
     position: 'center',
-    xAdjust: 0,
-    yAdjust: 0,
+    rotation: 0,
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
     textAlign: 'center',
-    enabled: false,
-    content: null
+    width: undefined,
+    xAdjust: 0,
+    xPadding: undefined, // TODO: v2 remove support for xPadding
+    yAdjust: 0,
+    yPadding: undefined, // TODO: v2 remove support for yPadding
   },
-  value: undefined,
-  endValue: undefined,
   scaleID: undefined,
-  xScaleID: 'x',
-  xMin: undefined,
+  shadowBlur: 0,
+  shadowOffsetX: 0,
+  shadowOffsetY: 0,
+  value: undefined,
   xMax: undefined,
-  yScaleID: 'y',
+  xMin: undefined,
+  xScaleID: 'x',
+  yMax: undefined,
   yMin: undefined,
-  yMax: undefined
+  yScaleID: 'y'
+};
+
+LineAnnotation.descriptors = {
+  arrowHeads: {
+    start: {
+      _fallback: true
+    },
+    end: {
+      _fallback: true
+    },
+    _fallback: true
+  }
 };
 
 LineAnnotation.defaultRoutes = {
   borderColor: 'color'
 };
+
+function loadLabelRect(line, chart, options) {
+  // TODO: v2 remove support for xPadding and yPadding
+  const {padding: lblPadding, xPadding, yPadding, borderWidth} = options;
+  const padding = getPadding(lblPadding, xPadding, yPadding);
+  const textSize = measureLabelSize(chart.ctx, options);
+  const width = textSize.width + padding.width + borderWidth;
+  const height = textSize.height + padding.height + borderWidth;
+  const labelRect = calculateLabelPosition(line, options, {width, height, padding}, chart.chartArea);
+  line.labelX = labelRect.x;
+  line.labelY = labelRect.y;
+  line.labelWidth = labelRect.width;
+  line.labelHeight = labelRect.height;
+  line.labelRotation = labelRect.rotation;
+  line.labelPadding = padding;
+  line.labelTextSize = textSize;
+  return line;
+}
 
 function calculateAutoRotation(line) {
   const {x, y, x2, y2} = line;
@@ -219,126 +327,26 @@ function calculateAutoRotation(line) {
   return rotation > PI / 2 ? rotation - PI : rotation < PI / -2 ? rotation + PI : rotation;
 }
 
-function drawLabel(ctx, line, chartArea) {
-  const label = line.options.label;
-
-  ctx.font = toFontString(label.font);
-
-  const {width, height} = measureLabel(ctx, label);
-  const rect = line.labelRect = calculateLabelPosition(line, width, height, chartArea);
-
-  ctx.translate(rect.x, rect.y);
-  ctx.rotate(rect.rotation);
-
-  ctx.fillStyle = label.backgroundColor;
-  const stroke = setBorderStyle(ctx, label);
-
-  ctx.beginPath();
-  addRoundedRectPath(ctx, {
-    x: -(width / 2), y: -(height / 2), w: width, h: height,
-    // TODO: v2 remove support for cornerRadius
-    radius: clampAll(toTRBLCorners(valueOrDefault(label.cornerRadius, label.borderRadius)), 0, Math.min(width, height) / 2)
-  });
-  ctx.closePath();
-  ctx.fill();
-  if (stroke) {
-    ctx.stroke();
+// TODO: v2 remove support for xPadding and yPadding
+function getPadding(padding, xPadding, yPadding) {
+  let tempPadding = padding;
+  if (xPadding || yPadding) {
+    tempPadding = {x: xPadding || 6, y: yPadding || 6};
   }
-
-  ctx.fillStyle = label.color;
-  if (isArray(label.content)) {
-    ctx.textAlign = label.textAlign;
-    const x = calculateLabelXAlignment(label, width);
-    let textYPosition = -(height / 2) + label.yPadding;
-    for (let i = 0; i < label.content.length; i++) {
-      ctx.textBaseline = 'top';
-      ctx.fillText(
-        label.content[i],
-        x,
-        textYPosition
-      );
-      textYPosition += label.font.size + label.yPadding;
-    }
-  } else if (label.content instanceof CanvasImage) {
-    const x = -(width / 2) + label.xPadding;
-    const y = -(height / 2) + label.yPadding;
-    ctx.drawImage(label.content, x, y, width - (2 * label.xPadding), height - (2 * label.yPadding));
-  } else {
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label.content, 0, 0);
-  }
+  return toPadding(tempPadding);
 }
 
-function setBorderStyle(ctx, options) {
-  if (options.borderWidth) {
-    ctx.lineCap = options.borderCapStyle;
-    ctx.setLineDash(options.borderDash);
-    ctx.lineDashOffset = options.borderDashOffset;
-    ctx.lineJoin = options.borderJoinStyle;
-    ctx.lineWidth = options.borderWidth;
-    ctx.strokeStyle = options.borderColor;
-    return true;
-  }
-}
-
-function calculateLabelXAlignment(label, width) {
-  const {textAlign, xPadding} = label;
-  if (textAlign === 'start') {
-    return -(width / 2) + xPadding;
-  } else if (textAlign === 'end') {
-    return +(width / 2) - xPadding;
-  }
-  return 0;
-}
-
-function getImageSize(size, value) {
-  if (typeof value === 'number') {
-    return value;
-  } else if (typeof value === 'string') {
-    return toPercent(value) * size;
-  }
-  return size;
-}
-
-const widthCache = new Map();
-function measureLabel(ctx, label) {
-  const content = label.content;
-  if (content instanceof CanvasImage) {
-    return {
-      width: getImageSize(content.width, label.width) + 2 * label.xPadding,
-      height: getImageSize(content.height, label.height) + 2 * label.yPadding
-    };
-  }
-  const lines = isArray(content) ? content : [content];
-  const count = lines.length;
-  let width = 0;
-  for (let i = 0; i < count; i++) {
-    const text = lines[i];
-    if (!widthCache.has(text)) {
-      widthCache.set(text, ctx.measureText(text).width);
-    }
-    width = Math.max(width, widthCache.get(text));
-  }
-  width += 2 * label.xPadding;
-
-  return {
-    width,
-    height: count * label.font.size + ((count + 1) * label.yPadding)
-  };
-}
-
-function calculateLabelPosition(line, width, height, chartArea) {
-  const label = line.options.label;
-  const {xAdjust, yAdjust, xPadding, yPadding, position} = label;
+function calculateLabelPosition(line, label, sizes, chartArea) {
+  const {width, height, padding} = sizes;
+  const {xAdjust, yAdjust} = label;
   const p1 = {x: line.x, y: line.y};
   const p2 = {x: line.x2, y: line.y2};
   const rotation = label.rotation === 'auto' ? calculateAutoRotation(line) : toRadians(label.rotation);
   const size = rotatedSize(width, height, rotation);
-  const t = calculateT(line, position, size, chartArea);
+  const t = calculateT(line, label, {labelSize: size, padding}, chartArea);
   const pt = pointInLine(p1, p2, t);
-  const xCoordinateSizes = {size: size.w, min: chartArea.left, max: chartArea.right, padding: xPadding};
-  const yCoordinateSizes = {size: size.h, min: chartArea.top, max: chartArea.bottom, padding: yPadding};
+  const xCoordinateSizes = {size: size.w, min: chartArea.left, max: chartArea.right, padding: padding.left};
+  const yCoordinateSizes = {size: size.h, min: chartArea.top, max: chartArea.bottom, padding: padding.top};
 
   return {
     x: adjustLabelCoordinate(pt.x, xCoordinateSizes) + xAdjust,
@@ -358,24 +366,25 @@ function rotatedSize(width, height, rotation) {
   };
 }
 
-function calculateT(line, position, rotSize, chartArea) {
-  let t = 0.5;
+function calculateT(line, label, sizes, chartArea) {
+  let t;
   const space = spaceAround(line, chartArea);
-  const label = line.options.label;
-  if (position === 'start') {
-    t = calculateTAdjust({w: line.x2 - line.x, h: line.y2 - line.y}, rotSize, label, space);
-  } else if (position === 'end') {
-    t = 1 - calculateTAdjust({w: line.x - line.x2, h: line.y - line.y2}, rotSize, label, space);
+  if (label.position === 'start') {
+    t = calculateTAdjust({w: line.x2 - line.x, h: line.y2 - line.y}, sizes, label, space);
+  } else if (label.position === 'end') {
+    t = 1 - calculateTAdjust({w: line.x - line.x2, h: line.y - line.y2}, sizes, label, space);
+  } else {
+    t = getRelativePosition(1, label.position);
   }
   return t;
 }
 
-function calculateTAdjust(lineSize, labelSize, label, space) {
-  const {xPadding, yPadding} = label;
+function calculateTAdjust(lineSize, sizes, label, space) {
+  const {labelSize, padding} = sizes;
   const lineW = lineSize.w * space.dx;
   const lineH = lineSize.h * space.dy;
-  const x = (lineW > 0) && ((labelSize.w / 2 + xPadding - space.x) / lineW);
-  const y = (lineH > 0) && ((labelSize.h / 2 + yPadding - space.y) / lineH);
+  const x = (lineW > 0) && ((labelSize.w / 2 + padding.left - space.x) / lineW);
+  const y = (lineH > 0) && ((labelSize.h / 2 + padding.top - space.y) / lineH);
   return clamp(Math.max(x, y), 0, 0.25);
 }
 
@@ -388,27 +397,69 @@ function spaceAround(line, chartArea) {
   return {
     x: Math.min(l, r),
     y: Math.min(t, b),
-    dx: l < r ? 1 : -1,
-    dy: t < b ? 1 : -1
+    dx: l <= r ? 1 : -1,
+    dy: t <= b ? 1 : -1
   };
 }
 
 function adjustLabelCoordinate(coordinate, labelSizes) {
   const {size, min, max, padding} = labelSizes;
   const halfSize = size / 2;
-
   if (size > max - min) {
     // if it does not fit, display as much as possible
     return (max + min) / 2;
   }
-
   if (min >= (coordinate - padding - halfSize)) {
     coordinate = min + padding + halfSize;
   }
-
   if (max <= (coordinate + padding + halfSize)) {
     coordinate = max - padding - halfSize;
   }
-
   return coordinate;
+}
+
+function getArrowHeads(line) {
+  const options = line.options;
+  const arrowStartOpts = options.arrowHeads && options.arrowHeads.start;
+  const arrowEndOpts = options.arrowHeads && options.arrowHeads.end;
+  return {
+    startOpts: arrowStartOpts,
+    endOpts: arrowEndOpts,
+    startAdjust: getLineAdjust(line, arrowStartOpts),
+    endAdjust: getLineAdjust(line, arrowEndOpts)
+  };
+}
+
+function getLineAdjust(line, arrowOpts) {
+  if (!arrowOpts || !arrowOpts.enabled) {
+    return 0;
+  }
+  const {length, width} = arrowOpts;
+  const adjust = line.options.borderWidth / 2;
+  const p1 = {x: length, y: width + adjust};
+  const p2 = {x: 0, y: adjust};
+  return Math.abs(interpolateX(0, p1, p2));
+}
+
+function drawArrowHead(ctx, offset, adjust, arrowOpts) {
+  if (!arrowOpts || !arrowOpts.enabled) {
+    return;
+  }
+  const {length, width, fill, backgroundColor, borderColor} = arrowOpts;
+  const arrowOffsetX = Math.abs(offset - length) + adjust;
+  ctx.beginPath();
+  setShadowStyle(ctx, arrowOpts);
+  setBorderStyle(ctx, arrowOpts);
+  ctx.moveTo(arrowOffsetX, -width);
+  ctx.lineTo(offset + adjust, 0);
+  ctx.lineTo(arrowOffsetX, width);
+  if (fill === true) {
+    ctx.fillStyle = backgroundColor || borderColor;
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+  } else {
+    ctx.shadowColor = arrowOpts.borderShadowColor;
+  }
+  ctx.stroke();
 }

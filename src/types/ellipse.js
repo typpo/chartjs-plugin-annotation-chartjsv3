@@ -1,11 +1,15 @@
-import ChartJsV3 from 'chart.js-v3';
-const {toRadians} = ChartJsV3.helpers;
-import BoxAnnotation from './box';
+import ChartJsV3, {Element} from 'chart.js-v3';
+const {PI, toRadians} = ChartJsV3.helpers;
+import {getRectCenterPoint, getChartRect, setBorderStyle, setShadowStyle} from '../helpers';
 
-export default class EllipseAnnotation extends BoxAnnotation {
+export default class EllipseAnnotation extends Element {
 
-  inRange(x, y) {
-    return pointInEllipse({x, y}, this);
+  inRange(mouseX, mouseY, useFinalPosition) {
+    return pointInEllipse({x: mouseX, y: mouseY}, this.getProps(['width', 'height'], useFinalPosition), this.options.rotation, this.options.borderWidth);
+  }
+
+  getCenterPoint(useFinalPosition) {
+    return getRectCenterPoint(this.getProps(['x', 'y', 'width', 'height'], useFinalPosition));
   }
 
   draw(ctx) {
@@ -18,40 +22,45 @@ export default class EllipseAnnotation extends BoxAnnotation {
     if (options.rotation) {
       ctx.rotate(toRadians(options.rotation));
     }
-
+    setShadowStyle(ctx, this.options);
     ctx.beginPath();
-
-    ctx.lineWidth = options.borderWidth;
-    ctx.strokeStyle = options.borderColor;
     ctx.fillStyle = options.backgroundColor;
-
-    ctx.setLineDash(options.borderDash);
-    ctx.lineDashOffset = options.borderDashOffset;
-
-    ctx.ellipse(0, 0, height / 2, width / 2, Math.PI / 2, 0, 2 * Math.PI);
-
+    const stroke = setBorderStyle(ctx, options);
+    ctx.ellipse(0, 0, height / 2, width / 2, PI / 2, 0, 2 * PI);
     ctx.fill();
-    ctx.stroke();
-
+    if (stroke) {
+      ctx.shadowColor = options.borderShadowColor;
+      ctx.stroke();
+    }
     ctx.restore();
   }
+
+  resolveElementProperties(chart, options) {
+    return getChartRect(chart, options);
+  }
+
 }
 
 EllipseAnnotation.id = 'ellipseAnnotation';
 
 EllipseAnnotation.defaults = {
-  display: true,
   adjustScaleRange: true,
+  backgroundShadowColor: 'transparent',
   borderDash: [],
   borderDashOffset: 0,
+  borderShadowColor: 'transparent',
   borderWidth: 1,
+  display: true,
   rotation: 0,
-  xScaleID: 'x',
-  xMin: undefined,
+  shadowBlur: 0,
+  shadowOffsetX: 0,
+  shadowOffsetY: 0,
   xMax: undefined,
-  yScaleID: 'y',
+  xMin: undefined,
+  xScaleID: 'x',
+  yMax: undefined,
   yMin: undefined,
-  yMax: undefined
+  yScaleID: 'y'
 };
 
 EllipseAnnotation.defaultRoutes = {
@@ -59,7 +68,7 @@ EllipseAnnotation.defaultRoutes = {
   backgroundColor: 'color'
 };
 
-function pointInEllipse(p, ellipse) {
+function pointInEllipse(p, ellipse, rotation, borderWidth) {
   const {width, height} = ellipse;
   const center = ellipse.getCenterPoint(true);
   const xRadius = width / 2;
@@ -68,6 +77,12 @@ function pointInEllipse(p, ellipse) {
   if (xRadius <= 0 || yRadius <= 0) {
     return false;
   }
-
-  return (Math.pow(p.x - center.x, 2) / Math.pow(xRadius, 2)) + (Math.pow(p.y - center.y, 2) / Math.pow(yRadius, 2)) <= 1.0;
+  // https://stackoverflow.com/questions/7946187/point-and-ellipse-rotated-position-test-algorithm
+  const angle = toRadians(rotation || 0);
+  const hBorderWidth = borderWidth / 2 || 0;
+  const cosAngle = Math.cos(angle);
+  const sinAngle = Math.sin(angle);
+  const a = Math.pow(cosAngle * (p.x - center.x) + sinAngle * (p.y - center.y), 2);
+  const b = Math.pow(sinAngle * (p.x - center.x) - cosAngle * (p.y - center.y), 2);
+  return (a / Math.pow(xRadius + hBorderWidth, 2)) + (b / Math.pow(yRadius + hBorderWidth, 2)) <= 1.0001;
 }

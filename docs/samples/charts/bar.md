@@ -1,7 +1,7 @@
 # Bar Chart
 
 ```js chart-editor
-// <block:setup:5>
+// <block:setup:4>
 const DATA_COUNT = 8;
 const MIN = 10;
 const MAX = 100;
@@ -65,8 +65,8 @@ const annotation3 = {
   xMax: 3.5,
   yMin: 0,
   yMax: 100,
-  backgroundColor: 'rgba(250,250,0,0.4)',
-  borderColor: 'rgba(0,150,0,0.2)',
+  backgroundColor: 'rgba(250, 250, 0, 0.4)',
+  borderColor: 'rgba(0, 150, 0, 0.2)',
   drawTime: 'beforeDatasetsDraw',
   borderWidth: 0,
   borderRadius: 0,
@@ -92,7 +92,7 @@ const config = {
 };
 /* </block:config> */
 
-var actions = [
+const actions = [
   {
     name: 'Randomize',
     handler: function(chart) {

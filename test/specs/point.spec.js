@@ -1,162 +1,77 @@
 describe('Point annotation', function() {
   describe('auto', jasmine.fixtures('point'));
 
-  describe('events', function() {
-    const Annotation = window['chartjs-plugin-annotation'];
+  describe('inRange', function() {
+    const annotation1 = {
+      type: 'point',
+      xValue: 7,
+      yValue: 7,
+      radius: 30
+    };
+    const annotation2 = {
+      type: 'point',
+      xValue: 3,
+      yValue: 3,
+      radius: 5
+    };
+    const annotation3 = {
+      type: 'point',
+      xValue: 5,
+      yValue: 5,
+      radius: 0
+    };
 
-    it('should detect events', function(done) {
-      const enterSpy = jasmine.createSpy('enter');
-      const leaveSpy = jasmine.createSpy('leave');
+    const chart = window.scatter10x10({annotation1, annotation2, annotation3});
+    const elems = window.getAnnotationElements(chart).filter(el => el.options.radius > 0);
+    const elemsNoRad = window.getAnnotationElements(chart).filter(el => el.options.radius === 0);
 
-      const chart = window.acquireChart({
-        type: 'scatter',
-        options: {
-          animation: false,
-          scales: {
-            x: {
-              display: false,
-              min: 0,
-              max: 10
-            },
-            y: {
-              display: false,
-              min: 0,
-              max: 10
-            }
-          },
-          plugins: {
-            legend: false,
-            annotation: {
-              annotations: {
-                point: {
-                  type: 'point',
-                  radius: 10,
-                  borderWidth: 5,
-                  enter: enterSpy,
-                  leave: leaveSpy
-                },
-                point2: {
-                  type: 'point',
-                  xScaleID: 'x',
-                  yScaleID: 'y',
-                  xValue: 8,
-                  yValue: 8,
-                  radius: 0,
-                  borderWidth: 0,
-                  enter: enterSpy
-                }
-              }
-            }
+    elems.forEach(function(element) {
+      it(`should return true inside element '${element.options.id}'`, function() {
+        for (const borderWidth of [0, 10]) {
+          const halfBorder = borderWidth / 2;
+          element.options.borderWidth = borderWidth;
+          const radius = element.height / 2;
+          for (const angle of [0, 45, 90, 135, 180, 225, 270, 315]) {
+            const rad = angle * (Math.PI / 180);
+            const {x, y} = {
+              x: element.x + Math.cos(rad) * (radius + halfBorder - 1),
+              y: element.y + Math.sin(rad) * (radius + halfBorder - 1)
+            };
+            expect(element.inRange(x, y)).withContext(`angle: ${angle}, radius: ${radius}, borderWidth: ${borderWidth}, {x: ${x.toFixed(1)}, y: ${y.toFixed(1)}}`).toEqual(true);
           }
-        },
-      });
-
-      const state = Annotation._getState(chart);
-      const point = state.elements[0];
-      const point2 = state.elements[1];
-
-      // should be centered when there are no scales or values
-      expect(point.x).toEqual(256);
-      expect(point.y).toEqual(256);
-
-      expect(enterSpy.calls.count()).toBe(0);
-      expect(leaveSpy.calls.count()).toBe(0);
-
-      window.triggerMouseEvent(chart, 'mousemove', point);
-
-      window.afterEvent(chart, 'mousemove', function() {
-        expect(enterSpy.calls.count()).toBe(1);
-
-        window.triggerMouseEvent(chart, 'mousemove', {
-          x: point.x + 16,
-          y: point.y
-        });
-
-        window.afterEvent(chart, 'mousemove', function() {
-          expect(leaveSpy.calls.count()).toBe(1);
-
-          window.triggerMouseEvent(chart, 'mousemove', {
-            x: point.x + 14.5,
-            y: point.y
-          });
-
-          window.afterEvent(chart, 'mousemove', function() {
-            expect(enterSpy.calls.count()).toBe(2);
-
-            window.triggerMouseEvent(chart, 'mousemove', point2);
-
-            window.afterEvent(chart, 'mousemove', function() {
-              expect(leaveSpy.calls.count()).toBe(2);
-              expect(enterSpy.calls.count()).toBe(2);
-              done();
-            });
-          });
-        });
-      });
-
-    });
-  });
-
-  describe('applying defaults', function() {
-
-    it('should not throw any exception', function() {
-      function createAndUpdateChart() {
-        const config = {
-          type: 'scatter',
-          options: {
-            animation: false,
-            scales: {
-              x: {
-                display: false,
-                min: 0,
-                max: 10
-              },
-              y: {
-                display: false,
-                min: 0,
-                max: 10
-              }
-            },
-            plugins: {
-              legend: false,
-              annotation: {
-                annotations: {
-                  point: {
-                    type: 'point',
-                    borderWidth: 5,
-                    display(context, options) {
-                      if (options) {
-                        context.chart.annotationRadius1 = options.radius;
-                      }
-                      return true;
-                    },
-                  },
-                  point2: {
-                    type: 'point',
-                    xScaleID: 'x',
-                    yScaleID: 'y',
-                    xValue: 8,
-                    yValue: 8,
-                    borderWidth: 0,
-                    display(context, options) {
-                      if (options) {
-                        context.chart.annotationRadius2 = options.radius;
-                      }
-                      return true;
-                    },
-                  }
-                }
-              }
-            }
-          },
-        };
-
-        var chart = acquireChart(config);
-        if (isNaN(chart.annotationRadius1) || isNaN(chart.annotationRadius2)) {
-          throw new Error('Defaults radius is not applied to annotaions : 1-' + chart.annotationRadius1 + ', 2-' + chart.annotationRadius2);
         }
-      }
-      expect(createAndUpdateChart).not.toThrow();
+      });
+
+      it(`should return false outside element '${element.options.id}'`, function() {
+        for (const borderWidth of [0, 10]) {
+          const halfBorder = borderWidth / 2;
+          element.options.borderWidth = borderWidth;
+          const radius = element.height / 2;
+          for (const angle of [0, 45, 90, 135, 180, 225, 270, 315]) {
+            const rad = angle * (Math.PI / 180);
+            const {x, y} = {
+              x: element.x + Math.cos(rad) * (radius + halfBorder + 1),
+              y: element.y + Math.sin(rad) * (radius + halfBorder + 1)
+            };
+            expect(element.inRange(x, y)).withContext(`angle: ${angle}, radius: ${radius}, borderWidth: ${borderWidth}, {x: ${x.toFixed(1)}, y: ${y.toFixed(1)}}`).toEqual(false);
+          }
+        }
+      });
+    });
+
+    elemsNoRad.forEach(function(element) {
+      it(`should return false radius is 0 element '${element.options.id}'`, function() {
+        for (const borderWidth of [0, 10]) {
+          const halfBorder = borderWidth / 2;
+          element.options.borderWidth = borderWidth;
+          for (const x of [element.x - halfBorder, element.x + halfBorder]) {
+            expect(element.inRange(x, element.y)).toEqual(false);
+          }
+          for (const y of [element.y - halfBorder, element.y + halfBorder]) {
+            expect(element.inRange(element.x, y)).toEqual(false);
+          }
+        }
+      });
     });
   });
 });
