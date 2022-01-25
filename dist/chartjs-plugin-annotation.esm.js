@@ -5,7 +5,7 @@
  * Released under the MIT License
  */
 import ChartJsV3, { Element, defaults, Chart, Animations } from 'chart.js-v3';
-import { Image as Image$1 } from 'canvas';
+import { Image } from 'canvas';
 
 const {distanceBetweenPoints, defined: defined$2, callback} = ChartJsV3.helpers;
 
@@ -323,7 +323,7 @@ const {addRoundedRectPath, isArray: isArray$1, toFont, toTRBLCorners, valueOrDef
 const widthCache = new Map();
 
 function isImageOrCanvas(content) {
-  return content instanceof Image$1 || content instanceof Image || content instanceof HTMLCanvasElement;
+  return content instanceof Image;
 }
 
 /**

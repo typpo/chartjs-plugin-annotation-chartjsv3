@@ -330,7 +330,7 @@ const {addRoundedRectPath, isArray: isArray$1, toFont, toTRBLCorners, valueOrDef
 const widthCache = new Map();
 
 function isImageOrCanvas(content) {
-  return content instanceof canvas.Image || content instanceof Image || content instanceof HTMLCanvasElement;
+  return content instanceof canvas.Image;
 }
 
 /**
