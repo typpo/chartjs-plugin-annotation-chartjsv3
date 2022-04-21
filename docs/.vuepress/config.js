@@ -97,7 +97,9 @@ module.exports = {
             'types/point',
             'types/polygon'
           ]
-        }
+        },
+        'migrationV1',
+        'migrationV2'
       ],
       '/samples/': [
         'intro',
@@ -107,6 +109,8 @@ module.exports = {
             'box/basic',
             'box/quarters',
             'box/disclosure',
+            'box/canvas',
+            'box/image',
           ]
         },
         {
@@ -122,6 +126,9 @@ module.exports = {
             'label/basic',
             'label/point',
             'label/callout',
+            'label/canvas',
+            'label/image',
+            'label/innerChart',
             'label/lowerUpper',
           ]
         },
@@ -135,6 +142,8 @@ module.exports = {
             'line/standardDeviation',
             'line/visibility',
             'line/labelVisibility',
+            'line/canvas',
+            'line/image',
             'line/datasetBars',
             'line/animation',
           ]
@@ -164,6 +173,8 @@ module.exports = {
             'charts/line',
           ],
         },
+        'interaction',
+        'utils',
       ]
     }
   }

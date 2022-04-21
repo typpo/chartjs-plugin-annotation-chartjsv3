@@ -1,18 +1,21 @@
 import ChartJsV3, {Element} from 'chart.js-v3';
-const {toPadding} = ChartJsV3.helpers;
-import {drawBox, drawLabel, getRelativePosition, measureLabelSize, getRectCenterPoint, getChartRect, toPosition, inBoxRange} from '../helpers';
+const {toPadding, toRadians} = ChartJsV3.helpers;
+import {drawBox, drawLabel, getRelativePosition, measureLabelSize, resolveBoxProperties, toPosition, inBoxRange, rotated, translate, getElementCenterPoint} from '../helpers';
 
 export default class BoxAnnotation extends Element {
-  inRange(mouseX, mouseY, useFinalPosition) {
-    return inBoxRange(mouseX, mouseY, this.getProps(['x', 'y', 'width', 'height'], useFinalPosition), this.options.borderWidth);
+
+  inRange(mouseX, mouseY, axis, useFinalPosition) {
+    const {x, y} = rotated({x: mouseX, y: mouseY}, this.getCenterPoint(useFinalPosition), toRadians(-this.options.rotation));
+    return inBoxRange({x, y}, this.getProps(['x', 'y', 'x2', 'y2'], useFinalPosition), axis, this.options.borderWidth);
   }
 
   getCenterPoint(useFinalPosition) {
-    return getRectCenterPoint(this.getProps(['x', 'y', 'width', 'height'], useFinalPosition));
+    return getElementCenterPoint(this, useFinalPosition);
   }
 
   draw(ctx) {
     ctx.save();
+    translate(ctx, this.getCenterPoint(), this.options.rotation);
     drawBox(ctx, this, this.options);
     ctx.restore();
   }
@@ -32,6 +35,7 @@ export default class BoxAnnotation extends Element {
     };
 
     ctx.save();
+    translate(ctx, this.getCenterPoint(), label.rotation);
     ctx.beginPath();
     ctx.rect(x + halfBorder + padding.left, y + halfBorder + padding.top,
       width - borderWidth - padding.width, height - borderWidth - padding.height);
@@ -41,7 +45,7 @@ export default class BoxAnnotation extends Element {
   }
 
   resolveElementProperties(chart, options) {
-    return getChartRect(chart, options);
+    return resolveBoxProperties(chart, options);
   }
 }
 
@@ -57,14 +61,13 @@ BoxAnnotation.defaults = {
   borderRadius: 0,
   borderShadowColor: 'transparent',
   borderWidth: 1,
-  cornerRadius: undefined, // TODO: v2 remove support for cornerRadius
   display: true,
   label: {
     borderWidth: undefined,
     color: 'black',
     content: null,
+    display: false,
     drawTime: undefined,
-    enabled: false,
     font: {
       family: undefined,
       lineHeight: undefined,
@@ -75,20 +78,24 @@ BoxAnnotation.defaults = {
     height: undefined,
     padding: 6,
     position: 'center',
+    rotation: undefined,
     textAlign: 'start',
+    textStrokeColor: undefined,
+    textStrokeWidth: 0,
     xAdjust: 0,
     yAdjust: 0,
     width: undefined
   },
+  rotation: 0,
   shadowBlur: 0,
   shadowOffsetX: 0,
   shadowOffsetY: 0,
   xMax: undefined,
   xMin: undefined,
-  xScaleID: 'x',
+  xScaleID: undefined,
   yMax: undefined,
   yMin: undefined,
-  yScaleID: 'y'
+  yScaleID: undefined
 };
 
 BoxAnnotation.defaultRoutes = {

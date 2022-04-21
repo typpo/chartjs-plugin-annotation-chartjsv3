@@ -27,12 +27,12 @@ module.exports = {
               borderColor: 'rgba(255, 99, 132)',
               borderWidth: 5,
               label: {
-                enabled: false,
+                display: false,
                 content: 'This is dynamic!',
               },
-              enter({chart, element}) {
-                element.options.label.enabled = true;
-                chart.draw();
+              enter({element}) {
+                element.options.label.display = true;
+                return true;
               }
             },
           }

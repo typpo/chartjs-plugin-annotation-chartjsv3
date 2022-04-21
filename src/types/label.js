@@ -1,49 +1,50 @@
-import {drawBox, drawLabel, measureLabelSize, getChartPoint, getRectCenterPoint, toPosition, setBorderStyle, getSize, inBoxRange, isBoundToPoint, getChartRect, getRelativePosition} from '../helpers';
-import ChartJsV3, {Element} from 'chart.js-v3';
-const {color, toPadding} = ChartJsV3.helpers;
+import {Element} from 'chart.js';
+import {drawBox, drawLabel, measureLabelSize, getChartPoint, toPosition, setBorderStyle, getSize, inBoxRange, isBoundToPoint, resolveBoxProperties, getRelativePosition, translate, rotated, getElementCenterPoint} from '../helpers';
+import {toPadding, toRadians, distanceBetweenPoints} from 'chart.js/helpers';
+
+const positions = ['left', 'bottom', 'top', 'right'];
 
 export default class LabelAnnotation extends Element {
 
-  inRange(mouseX, mouseY, useFinalPosition) {
-    return inBoxRange(mouseX, mouseY, this.getProps(['x', 'y', 'width', 'height'], useFinalPosition), this.options.borderWidth);
+  inRange(mouseX, mouseY, axis, useFinalPosition) {
+    const {x, y} = rotated({x: mouseX, y: mouseY}, this.getCenterPoint(useFinalPosition), toRadians(-this.options.rotation));
+    return inBoxRange({x, y}, this.getProps(['x', 'y', 'x2', 'y2'], useFinalPosition), axis, this.options.borderWidth);
   }
 
   getCenterPoint(useFinalPosition) {
-    return getRectCenterPoint(this.getProps(['x', 'y', 'width', 'height'], useFinalPosition));
+    return getElementCenterPoint(this, useFinalPosition);
   }
 
   draw(ctx) {
-    if (!this.options.content) {
+    const options = this.options;
+    if (!options.content) {
       return;
     }
-    const {labelX, labelY, labelWidth, labelHeight, options} = this;
+    ctx.save();
+    translate(ctx, this.getCenterPoint(), options.rotation);
     drawCallout(ctx, this);
-    if (this.boxVisible) {
-      drawBox(ctx, this, options);
-    }
-    drawLabel(ctx, {x: labelX, y: labelY, width: labelWidth, height: labelHeight}, options);
+    drawBox(ctx, this, options);
+    drawLabel(ctx, getLabelSize(this), options);
+    ctx.restore();
   }
 
-  // TODO: make private in v2
   resolveElementProperties(chart, options) {
-    const point = !isBoundToPoint(options) ? getRectCenterPoint(getChartRect(chart, options)) : getChartPoint(chart, options);
+    let point;
+    if (!isBoundToPoint(options)) {
+      const {centerX, centerY} = resolveBoxProperties(chart, options);
+      point = {x: centerX, y: centerY};
+    } else {
+      point = getChartPoint(chart, options);
+    }
     const padding = toPadding(options.padding);
     const labelSize = measureLabelSize(chart.ctx, options);
     const boxSize = measureRect(point, labelSize, options, padding);
-    const bgColor = color(options.backgroundColor);
-    const boxVisible = options.borderWidth > 0 || (bgColor && bgColor.valid && bgColor.rgb.a > 0);
-
     const properties = {
-      boxVisible,
       pointX: point.x,
       pointY: point.y,
-      ...boxSize,
-      labelX: boxSize.x + padding.left + (options.borderWidth / 2),
-      labelY: boxSize.y + padding.top + (options.borderWidth / 2),
-      labelWidth: labelSize.width,
-      labelHeight: labelSize.height
+      ...boxSize
     };
-    properties.calloutPosition = options.callout.enabled && resolveCalloutPosition(properties, options.callout);
+    properties.calloutPosition = options.callout.display && resolveCalloutPosition(properties, options.callout, options.rotation);
     return properties;
   }
 }
@@ -68,7 +69,7 @@ LabelAnnotation.defaults = {
     borderDashOffset: 0,
     borderJoinStyle: 'miter',
     borderWidth: 1,
-    enabled: false,
+    display: false,
     margin: 5,
     position: 'auto',
     side: 5,
@@ -87,20 +88,23 @@ LabelAnnotation.defaults = {
   height: undefined,
   padding: 6,
   position: 'center',
+  rotation: 0,
   shadowBlur: 0,
   shadowOffsetX: 0,
   shadowOffsetY: 0,
   textAlign: 'center',
+  textStrokeColor: undefined,
+  textStrokeWidth: 0,
   width: undefined,
   xAdjust: 0,
   xMax: undefined,
   xMin: undefined,
-  xScaleID: 'x',
+  xScaleID: undefined,
   xValue: undefined,
   yAdjust: 0,
   yMax: undefined,
   yMin: undefined,
-  yScaleID: 'y',
+  yScaleID: undefined,
   yValue: undefined
 };
 
@@ -112,12 +116,18 @@ function measureRect(point, size, options, padding) {
   const width = size.width + padding.width + options.borderWidth;
   const height = size.height + padding.height + options.borderWidth;
   const position = toPosition(options.position);
+  const x = calculatePosition(point.x, width, options.xAdjust, position.x);
+  const y = calculatePosition(point.y, height, options.yAdjust, position.y);
 
   return {
-    x: calculatePosition(point.x, width, options.xAdjust, position.x),
-    y: calculatePosition(point.y, height, options.yAdjust, position.y),
+    x,
+    y,
+    x2: x + width,
+    y2: y + height,
     width,
-    height
+    height,
+    centerX: x + width / 2,
+    centerY: y + height / 2
   };
 }
 
@@ -127,7 +137,7 @@ function calculatePosition(start, size, adjust = 0, position) {
 
 function drawCallout(ctx, element) {
   const {pointX, pointY, calloutPosition, options} = element;
-  if (!calloutPosition) {
+  if (!calloutPosition || element.inRange(pointX, pointY)) {
     return;
   }
   const callout = options.callout;
@@ -146,22 +156,23 @@ function drawCallout(ctx, element) {
   }
   ctx.moveTo(sideStart.x, sideStart.y);
   ctx.lineTo(sideEnd.x, sideEnd.y);
-  ctx.lineTo(pointX, pointY);
+  const rotatedPoint = rotated({x: pointX, y: pointY}, element.getCenterPoint(), toRadians(-options.rotation));
+  ctx.lineTo(rotatedPoint.x, rotatedPoint.y);
   ctx.stroke();
   ctx.restore();
 }
 
 function getCalloutSeparatorCoord(element, position) {
-  const {x, y, width, height} = element;
+  const {x, y, x2, y2} = element;
   const adjust = getCalloutSeparatorAdjust(element, position);
   let separatorStart, separatorEnd;
   if (position === 'left' || position === 'right') {
     separatorStart = {x: x + adjust, y};
-    separatorEnd = {x: separatorStart.x, y: separatorStart.y + height};
+    separatorEnd = {x: separatorStart.x, y: y2};
   } else {
     //  position 'top' or 'bottom'
     separatorStart = {x, y: y + adjust};
-    separatorEnd = {x: separatorStart.x + width, y: separatorStart.y};
+    separatorEnd = {x: x2, y: separatorStart.y};
   }
   return {separatorStart, separatorEnd};
 }
@@ -201,25 +212,40 @@ function getCalloutSideAdjust(position, options) {
   return side;
 }
 
-function resolveCalloutPosition(element, options) {
+function resolveCalloutPosition(properties, options, rotation) {
   const position = options.position;
   if (position === 'left' || position === 'right' || position === 'top' || position === 'bottom') {
     return position;
   }
-  return resolveCalloutAutoPosition(element, options);
+  return resolveCalloutAutoPosition(properties, options, rotation);
 }
 
-function resolveCalloutAutoPosition(element, options) {
-  const {x, y, width, height, pointX, pointY} = element;
-  const {margin, side} = options;
-  const adjust = margin + side;
-  if (pointX < (x - adjust)) {
-    return 'left';
-  } else if (pointX > (x + width + adjust)) {
-    return 'right';
-  } else if (pointY < (y - adjust)) {
-    return 'top';
-  } else if (pointY > (y + height + adjust)) {
-    return 'bottom';
+function resolveCalloutAutoPosition(properties, options, rotation) {
+  const {x, y, x2, y2, width, height, pointX, pointY, centerX, centerY} = properties;
+  const center = {x: centerX, y: centerY};
+  const start = options.start;
+  const xAdjust = getSize(width, start);
+  const yAdjust = getSize(height, start);
+  const xPoints = [x, x + xAdjust, x + xAdjust, x2];
+  const yPoints = [y + yAdjust, y2, y, y2];
+  const result = [];
+  for (let index = 0; index < 4; index++) {
+    const rotatedPoint = rotated({x: xPoints[index], y: yPoints[index]}, center, toRadians(rotation));
+    result.push({
+      position: positions[index],
+      distance: distanceBetweenPoints(rotatedPoint, {x: pointX, y: pointY})
+    });
   }
+  return result.sort((a, b) => a.distance - b.distance)[0].position;
+}
+
+function getLabelSize({x, y, width, height, options}) {
+  const hBorderWidth = options.borderWidth / 2;
+  const padding = toPadding(options.padding);
+  return {
+    x: x + padding.left + hBorderWidth,
+    y: y + padding.top + hBorderWidth,
+    width: width - padding.left - padding.right - options.borderWidth,
+    height: height - padding.top - padding.bottom - options.borderWidth
+  };
 }

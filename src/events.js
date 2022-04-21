@@ -1,13 +1,25 @@
 import ChartJsV3 from 'chart.js-v3';
-const {distanceBetweenPoints, defined, callback} = ChartJsV3.helpers;
+const {defined, callback} = ChartJsV3.helpers;
+import {getElements} from './interaction';
 
-const clickHooks = ['click', 'dblclick'];
 const moveHooks = ['enter', 'leave'];
-export const hooks = clickHooks.concat(moveHooks);
 
+/**
+ * @typedef { import("chart.js").Chart } Chart
+ * @typedef { import('../../types/options').AnnotationPluginOptions } AnnotationPluginOptions
+ */
+
+export const hooks = moveHooks.concat('click');
+
+/**
+ * @param {Chart} chart
+ * @param {Object} state
+ * @param {AnnotationPluginOptions} options
+ */
 export function updateListeners(chart, state, options) {
   state.listened = false;
   state.moveListened = false;
+  state._getElements = getElements; // for testing
 
   hooks.forEach(hook => {
     if (typeof options[hook] === 'function') {
@@ -25,12 +37,8 @@ export function updateListeners(chart, state, options) {
 
   if (!state.listened || !state.moveListened) {
     state.annotations.forEach(scope => {
-      if (!state.listened) {
-        clickHooks.forEach(hook => {
-          if (typeof scope[hook] === 'function') {
-            state.listened = true;
-          }
-        });
+      if (!state.listened && typeof scope.click === 'function') {
+        state.listened = true;
       }
       if (!state.moveListened) {
         moveHooks.forEach(hook => {
@@ -44,96 +52,66 @@ export function updateListeners(chart, state, options) {
   }
 }
 
+/**
+ * @param {Object} state
+ * @param {ChartEvent} event
+ * @param {AnnotationPluginOptions} options
+ * @return {boolean|undefined}
+ */
 export function handleEvent(state, event, options) {
   if (state.listened) {
     switch (event.type) {
     case 'mousemove':
     case 'mouseout':
-      handleMoveEvents(state, event);
-      break;
+      return handleMoveEvents(state, event, options);
     case 'click':
-      handleClickEvents(state, event, options);
-      break;
+      return handleClickEvents(state, event, options);
     default:
     }
   }
 }
 
-function handleMoveEvents(state, event) {
+function handleMoveEvents(state, event, options) {
   if (!state.moveListened) {
     return;
   }
 
-  let element;
+  let elements;
 
   if (event.type === 'mousemove') {
-    element = getNearestItem(state.elements, event);
+    elements = getElements(state, event, options.interaction);
+  } else {
+    elements = [];
   }
 
   const previous = state.hovered;
-  state.hovered = element;
+  state.hovered = elements;
 
-  dispatchMoveEvents(state, {previous, element}, event);
+  const context = {state, event};
+  let changed = dispatchMoveEvents(context, 'leave', previous, elements);
+  return dispatchMoveEvents(context, 'enter', elements, previous) || changed;
 }
 
-function dispatchMoveEvents(state, elements, event) {
-  const {previous, element} = elements;
-  if (previous && previous !== element) {
-    dispatchEvent(previous.options.leave || state.listeners.leave, previous, event);
+function dispatchMoveEvents({state, event}, hook, elements, checkElements) {
+  let changed;
+  for (const element of elements) {
+    if (checkElements.indexOf(element) < 0) {
+      changed = dispatchEvent(element.options[hook] || state.listeners[hook], element, event) || changed;
+    }
   }
-  if (element && element !== previous) {
-    dispatchEvent(element.options.enter || state.listeners.enter, element, event);
-  }
+  return changed;
 }
 
 function handleClickEvents(state, event, options) {
   const listeners = state.listeners;
-  const element = getNearestItem(state.elements, event);
-  if (element) {
-    const elOpts = element.options;
-    const dblclick = elOpts.dblclick || listeners.dblclick;
-    const click = elOpts.click || listeners.click;
-    if (element.clickTimeout) {
-      // 2nd click before timeout, so its a double click
-      clearTimeout(element.clickTimeout);
-      delete element.clickTimeout;
-      dispatchEvent(dblclick, element, event);
-    } else if (dblclick) {
-      // if there is a dblclick handler, wait for dblClickSpeed ms before deciding its a click
-      element.clickTimeout = setTimeout(() => {
-        delete element.clickTimeout;
-        dispatchEvent(click, element, event);
-      }, options.dblClickSpeed);
-    } else {
-      // no double click handler, just call the click handler directly
-      dispatchEvent(click, element, event);
-    }
+  const elements = getElements(state, event, options.interaction);
+  let changed;
+  for (const element of elements) {
+    changed = dispatchEvent(element.options.click || listeners.click, element, event) || changed;
   }
+  return changed;
 }
 
 function dispatchEvent(handler, element, event) {
-  callback(handler, [element.$context, event]);
-}
-
-function getNearestItem(elements, position) {
-  let minDistance = Number.POSITIVE_INFINITY;
-
-  return elements
-    .filter((element) => element.options.display && element.inRange(position.x, position.y))
-    .reduce((nearestItems, element) => {
-      const center = element.getCenterPoint();
-      const distance = distanceBetweenPoints(position, center);
-
-      if (distance < minDistance) {
-        nearestItems = [element];
-        minDistance = distance;
-      } else if (distance === minDistance) {
-        // Can have multiple items at the same distance in which case we sort by size
-        nearestItems.push(element);
-      }
-
-      return nearestItems;
-    }, [])
-    .sort((a, b) => a._index - b._index)
-    .slice(0, 1)[0]; // return only the top item
+  return callback(handler, [element.$context, event]) === true;
 }

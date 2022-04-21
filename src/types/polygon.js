@@ -1,10 +1,18 @@
 import ChartJsV3, {Element} from 'chart.js-v3';
-const {PI, RAD_PER_DEG} = ChartJsV3.helpers;
-import {setBorderStyle, resolvePointPosition, getElementCenterPoint, setShadowStyle} from '../helpers';
+const {PI, RAD_PER_DEG, toRadians} = ChartJsV3.helpers;
+import {setBorderStyle, resolvePointProperties, getElementCenterPoint, setShadowStyle, rotated} from '../helpers';
 
 export default class PolygonAnnotation extends Element {
-  inRange(mouseX, mouseY, useFinalPosition) {
-    return this.options.radius >= 0.1 && this.elements.length > 1 && pointIsInPolygon(this.elements, mouseX, mouseY, useFinalPosition);
+
+  inRange(mouseX, mouseY, axis, useFinalPosition) {
+    if (axis !== 'x' && axis !== 'y') {
+      return this.options.radius >= 0.1 && this.elements.length > 1 && pointIsInPolygon(this.elements, mouseX, mouseY, useFinalPosition);
+    }
+    const rotatedPoint = rotated({x: mouseX, y: mouseY}, this.getCenterPoint(useFinalPosition), toRadians(-this.options.rotation));
+    const axisPoints = this.elements.map((point) => axis === 'y' ? point.bY : point.bX);
+    const start = Math.min(...axisPoints);
+    const end = Math.max(...axisPoints);
+    return rotatedPoint[axis] >= start && rotatedPoint[axis] <= end;
   }
 
   getCenterPoint(useFinalPosition) {
@@ -38,27 +46,18 @@ export default class PolygonAnnotation extends Element {
   }
 
   resolveElementProperties(chart, options) {
-    const {x, y, width, height} = resolvePointPosition(chart, options);
-    const {sides, radius, rotation, borderWidth} = options;
-    const halfBorder = borderWidth / 2;
+    const properties = resolvePointProperties(chart, options);
+    const {x, y} = properties;
+    const {sides, rotation} = options;
     const elements = [];
     const angle = (2 * PI) / sides;
     let rad = rotation * RAD_PER_DEG;
     for (let i = 0; i < sides; i++, rad += angle) {
-      const sin = Math.sin(rad);
-      const cos = Math.cos(rad);
-      elements.push({
-        type: 'point',
-        optionScope: 'point',
-        properties: {
-          x: x + sin * radius,
-          y: y - cos * radius,
-          bX: x + sin * (radius + halfBorder),
-          bY: y - cos * (radius + halfBorder)
-        }
-      });
+      elements.push(buildPointElement(properties, options, rad));
     }
-    return {x, y, width, height, elements, initProperties: {x, y}};
+    properties.elements = elements;
+    properties.initProperties = {x, y};
+    return properties;
   }
 }
 
@@ -86,12 +85,12 @@ PolygonAnnotation.defaults = {
   xAdjust: 0,
   xMax: undefined,
   xMin: undefined,
-  xScaleID: 'x',
+  xScaleID: undefined,
   xValue: undefined,
   yAdjust: 0,
   yMax: undefined,
   yMin: undefined,
-  yScaleID: 'y',
+  yScaleID: undefined,
   yValue: undefined
 };
 
@@ -100,6 +99,24 @@ PolygonAnnotation.defaultRoutes = {
   backgroundColor: 'color'
 };
 
+function buildPointElement({centerX, centerY}, {radius, borderWidth}, rad) {
+  const halfBorder = borderWidth / 2;
+  const sin = Math.sin(rad);
+  const cos = Math.cos(rad);
+  const point = {x: centerX + sin * radius, y: centerY - cos * radius};
+  return {
+    type: 'point',
+    optionScope: 'point',
+    properties: {
+      x: point.x,
+      y: point.y,
+      centerX: point.x,
+      centerY: point.y,
+      bX: centerX + sin * (radius + halfBorder),
+      bY: centerY - cos * (radius + halfBorder)
+    }
+  };
+}
 
 function pointIsInPolygon(points, x, y, useFinalPosition) {
   let isInside = false;

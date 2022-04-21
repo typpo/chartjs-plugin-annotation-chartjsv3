@@ -33,15 +33,15 @@ module.exports = {
                 borderWidth: 3,
                 borderDash: [6, 6],
                 content: 'dynamic label',
-                enabled: false
+                display: false
               },
-              enter({chart, element}) {
-                element.options.label.enabled = true;
-                chart.draw();
+              enter({element}) {
+                element.options.label.display = true;
+                return true;
               },
-              leave({chart, element}) {
-                element.options.label.enabled = false;
-                chart.draw();
+              leave({element}) {
+                element.options.label.display = false;
+                return true;
               }
             },
           }

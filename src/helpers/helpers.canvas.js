@@ -1,22 +1,47 @@
 import ChartJsV3 from 'chart.js-v3';
-const {addRoundedRectPath, isArray, toFont, toTRBLCorners, valueOrDefault} = ChartJsV3.helpers;
-
-import {Image as CanvasImage} from 'canvas';
+const {addRoundedRectPath, isArray, toFont, toTRBLCorners, toRadians} = ChartJsV3.helpers;
 
 import {clampAll} from './helpers.core';
 import {calculateTextAlignment, getSize} from './helpers.options';
 
 const widthCache = new Map();
 
+/**
+ * @typedef { import('chart.js').Point } Point
+ * @typedef { import('../../types/label').CoreLabelOptions } CoreLabelOptions
+ */
+
+/**
+ * Determine if content is an image or a canvas.
+ * @param {*} content
+ * @returns boolean|undefined
+ * @todo move this function to chart.js helpers
+ */
 export function isImageOrCanvas(content) {
-  return content instanceof CanvasImage;
+  if (content && typeof content === 'object') {
+    const type = content.toString();
+    return (type === '[object HTMLImageElement]' || type === '[object HTMLCanvasElement]');
+  }
 }
 
 /**
- * Apply border options to the canvas context before drawing a shape
+ * Set the translation on the canvas if the rotation must be applied.
  * @param {CanvasRenderingContext2D} ctx - chart canvas context
- * @param {Object} options - options with border configuration
- * @returns {boolean} true is the border options have been applied
+ * @param {Point} point - the point of translation
+ * @param {number} rotation - rotation (in degrees) to apply
+ */
+export function translate(ctx, {x, y}, rotation) {
+  if (rotation) {
+    ctx.translate(x, y);
+    ctx.rotate(toRadians(rotation));
+    ctx.translate(-x, -y);
+  }
+}
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Object} options
+ * @returns {boolean|undefined}
  */
 export function setBorderStyle(ctx, options) {
   if (options && options.borderWidth) {
@@ -31,9 +56,8 @@ export function setBorderStyle(ctx, options) {
 }
 
 /**
- * Apply shadow options to the canvas context before drawing a shape
- * @param {CanvasRenderingContext2D} ctx - chart canvas context
- * @param {Object} options - options with shadow configuration
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Object} options
  */
 export function setShadowStyle(ctx, options) {
   ctx.shadowColor = options.backgroundShadowColor;
@@ -43,10 +67,9 @@ export function setShadowStyle(ctx, options) {
 }
 
 /**
- * Measure the label size using the label options.
- * @param {CanvasRenderingContext2D} ctx - chart canvas context
- * @param {Object} options - options to configure the label
- * @returns {{width: number, height: number}} the measured size of the label
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {CoreLabelOptions} options
+ * @returns {{width: number, height: number}}
  */
 export function measureLabelSize(ctx, options) {
   const content = options.content;
@@ -57,8 +80,9 @@ export function measureLabelSize(ctx, options) {
     };
   }
   const font = toFont(options.font);
+  const strokeWidth = options.textStrokeWidth;
   const lines = isArray(content) ? content : [content];
-  const mapKey = lines.join() + font.string + (ctx._measureText ? '-spriting' : '');
+  const mapKey = lines.join() + font.string + strokeWidth + (ctx._measureText ? '-spriting' : '');
   if (!widthCache.has(mapKey)) {
     ctx.save();
     ctx.font = font.string;
@@ -66,21 +90,19 @@ export function measureLabelSize(ctx, options) {
     let width = 0;
     for (let i = 0; i < count; i++) {
       const text = lines[i];
-      width = Math.max(width, ctx.measureText(text).width);
+      width = Math.max(width, ctx.measureText(text).width + strokeWidth);
     }
     ctx.restore();
-    const height = count * font.lineHeight;
+    const height = count * font.lineHeight + strokeWidth;
     widthCache.set(mapKey, {width, height});
   }
   return widthCache.get(mapKey);
 }
 
 /**
- * Draw a box with the size and the styling options.
- * @param {CanvasRenderingContext2D} ctx - chart canvas context
- * @param {{x: number, y: number, width: number, height: number}} rect - rect to draw
- * @param {Object} options - options to style the box
- * @returns {undefined}
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{x: number, y: number, width: number, height: number}} rect
+ * @param {Object} options
  */
 export function drawBox(ctx, rect, options) {
   const {x, y, width, height} = rect;
@@ -91,8 +113,7 @@ export function drawBox(ctx, rect, options) {
   ctx.beginPath();
   addRoundedRectPath(ctx, {
     x, y, w: width, h: height,
-    // TODO: v2 remove support for cornerRadius
-    radius: clampAll(toTRBLCorners(valueOrDefault(options.cornerRadius, options.borderRadius)), 0, Math.min(width, height) / 2)
+    radius: clampAll(toTRBLCorners(options.borderRadius), 0, Math.min(width, height) / 2)
   });
   ctx.closePath();
   ctx.fill();
@@ -103,6 +124,11 @@ export function drawBox(ctx, rect, options) {
   ctx.restore();
 }
 
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{x: number, y: number, width: number, height: number}} rect
+ * @param {CoreLabelOptions} options
+ */
 export function drawLabel(ctx, rect, options) {
   const content = options.content;
   if (isImageOrCanvas(content)) {
@@ -113,10 +139,26 @@ export function drawLabel(ctx, rect, options) {
   const font = toFont(options.font);
   const lh = font.lineHeight;
   const x = calculateTextAlignment(rect, options);
-  const y = rect.y + (lh / 2);
+  const y = rect.y + (lh / 2) + options.textStrokeWidth / 2;
+  ctx.save();
   ctx.font = font.string;
   ctx.textBaseline = 'middle';
   ctx.textAlign = options.textAlign;
+  if (setTextStrokeStyle(ctx, options)) {
+    labels.forEach((l, i) => ctx.strokeText(l, x, y + (i * lh)));
+  }
   ctx.fillStyle = options.color;
   labels.forEach((l, i) => ctx.fillText(l, x, y + (i * lh)));
+  ctx.restore();
+}
+
+function setTextStrokeStyle(ctx, options) {
+  if (options.textStrokeWidth > 0) {
+    // https://stackoverflow.com/questions/13627111/drawing-text-with-an-outer-stroke-with-html5s-canvas
+    ctx.lineJoin = 'round';
+    ctx.miterLimit = 2;
+    ctx.lineWidth = options.textStrokeWidth;
+    ctx.strokeStyle = options.textStrokeColor;
+    return true;
+  }
 }

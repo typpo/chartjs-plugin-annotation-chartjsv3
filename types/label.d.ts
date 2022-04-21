@@ -16,6 +16,8 @@ export interface CoreLabelOptions {
    * @default 'center'
    */
   textAlign?: Scriptable<LabelTextAlign, PartialEventContext>,
+  textStrokeColor?: Scriptable<Color, PartialEventContext>,
+  textStrokeWidth?: Scriptable<number, PartialEventContext>,
   /**
    * Adjustment along x-axis (left-right) of label relative to above number (can be negative)
    * For horizontal lines positioned left or right, negative values move
@@ -75,46 +77,30 @@ export interface ContainedLabelOptions extends CoreLabelOptions {
    * @default 6
    */
   borderRadius?: Scriptable<number | BorderRadius, PartialEventContext>,
-  /**
-   * @deprecated replaced by borderRadius
-   * @todo remove at v2
-   */
-  cornerRadius?: Scriptable<number | BorderRadius, PartialEventContext>,
 }
 
 export interface LabelOptions extends ContainedLabelOptions, ShadowOptions {
   position?: Scriptable<LabelPosition, PartialEventContext>,
   /**
-   * Whether the label is enabled and should be displayed
+   * Whether the label should be displayed
    * @default true
    */
-  enabled?: Scriptable<boolean, PartialEventContext>,
+  display?: Scriptable<boolean, PartialEventContext>,
   /**
    * Rotation of label, in degrees, or 'auto' to use the degrees of the line, default is 0
    * @default 90
    */
   rotation?: Scriptable<number | 'auto', PartialEventContext>
-  /**
-   * Padding of label to add left/right
-   * @default 6
-   * @deprecated
-   */
-  xPadding?: Scriptable<number, PartialEventContext>,
-  /**
-   * Padding of label to add top/bottom
-   * @default 6
-   * @deprecated
-   */
-  yPadding?: Scriptable<number, PartialEventContext>,
 }
 
 export interface BoxLabelOptions extends CoreLabelOptions {
   position?: Scriptable<LabelPosition | LabelPositionObject, PartialEventContext>,
   /**
-   * Whether the label is enabled and should be displayed
+   * Whether the label should be displayed
    * @default true
    */
-  enabled?: Scriptable<boolean, PartialEventContext>,
+  display?: Scriptable<boolean, PartialEventContext>,
+  rotation?: Scriptable<number, PartialEventContext>
 }
 
 export interface LabelTypeOptions extends ContainedLabelOptions {

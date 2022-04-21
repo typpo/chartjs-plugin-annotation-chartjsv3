@@ -1,14 +1,15 @@
 import ChartJsV3 from 'chart.js-v3';
 const {isFinite} = ChartJsV3.helpers;
-import {getRectCenterPoint} from './helpers.geometric';
 import {isBoundToPoint} from './helpers.options';
 
 /**
  * @typedef { import("chart.js").Chart } Chart
  * @typedef { import("chart.js").Scale } Scale
  * @typedef { import("chart.js").Point } Point
+ * @typedef { import('../../types/element').AnnotationBoxModel } AnnotationBoxModel
  * @typedef { import('../../types/options').CoreAnnotationOptions } CoreAnnotationOptions
  * @typedef { import('../../types/options').PointAnnotationOptions } PointAnnotationOptions
+ * @typedef { import('../../types/options').PolygonAnnotationOptions } PolygonAnnotationOptions
  */
 
 /**
@@ -23,23 +24,40 @@ export function scaleValue(scale, value, fallback) {
 }
 
 /**
- * @param {Scale} scale
- * @param {{start: number, end: number}} options
- * @returns {{start: number, end: number}}
+ * Search the scale defined in chartjs by the axis related to the annotation options key.
+ * @param {{ [key: string]: Scale }} scales
+ * @param {CoreAnnotationOptions} options
+ * @param {string} key
+ * @returns {string}
  */
-function getChartDimensionByScale(scale, options) {
+export function retrieveScaleID(scales, options, key) {
+  const scaleID = options[key];
+  if (scaleID || key === 'scaleID') {
+    return scaleID;
+  }
+  const axis = key.charAt(0);
+  const axes = Object.values(scales).filter((scale) => scale.axis && scale.axis === axis);
+  if (axes.length) {
+    return axes[0].id;
+  }
+  return axis;
+}
+
+/**
+ * @param {Scale} scale
+ * @param {{min: number, max: number, start: number, end: number}} options
+ * @returns {{start: number, end: number}|undefined}
+ */
+export function getDimensionByScale(scale, options) {
   if (scale) {
-    const min = scaleValue(scale, options.min, options.start);
-    const max = scaleValue(scale, options.max, options.end);
+    const reverse = scale.options.reverse;
+    const start = scaleValue(scale, options.min, reverse ? options.end : options.start);
+    const end = scaleValue(scale, options.max, reverse ? options.start : options.end);
     return {
-      start: Math.min(min, max),
-      end: Math.max(min, max)
+      start,
+      end
     };
   }
-  return {
-    start: options.start,
-    end: options.end
-  };
 }
 
 /**
@@ -49,17 +67,17 @@ function getChartDimensionByScale(scale, options) {
  */
 export function getChartPoint(chart, options) {
   const {chartArea, scales} = chart;
-  const xScale = scales[options.xScaleID];
-  const yScale = scales[options.yScaleID];
+  const xScale = scales[retrieveScaleID(scales, options, 'xScaleID')];
+  const yScale = scales[retrieveScaleID(scales, options, 'yScaleID')];
   let x = chartArea.width / 2;
   let y = chartArea.height / 2;
 
   if (xScale) {
-    x = scaleValue(xScale, options.xValue, x);
+    x = scaleValue(xScale, options.xValue, xScale.left + xScale.width / 2);
   }
 
   if (yScale) {
-    y = scaleValue(yScale, options.yValue, y);
+    y = scaleValue(yScale, options.yValue, yScale.top + yScale.height / 2);
   }
   return {x, y};
 }
@@ -67,21 +85,23 @@ export function getChartPoint(chart, options) {
 /**
  * @param {Chart} chart
  * @param {CoreAnnotationOptions} options
- * @returns {{x?:number, y?: number, x2?: number, y2?: number, width?: number, height?: number}}
+ * @returns {AnnotationBoxModel}
  */
-export function getChartRect(chart, options) {
-  const xScale = chart.scales[options.xScaleID];
-  const yScale = chart.scales[options.yScaleID];
-  let {top: y, left: x, bottom: y2, right: x2} = chart.chartArea;
+export function resolveBoxProperties(chart, options) {
+  const scales = chart.scales;
+  const xScale = scales[retrieveScaleID(scales, options, 'xScaleID')];
+  const yScale = scales[retrieveScaleID(scales, options, 'yScaleID')];
 
   if (!xScale && !yScale) {
     return {};
   }
 
+  let {left: x, right: x2} = xScale || chart.chartArea;
+  let {top: y, bottom: y2} = yScale || chart.chartArea;
   const xDim = getChartDimensionByScale(xScale, {min: options.xMin, max: options.xMax, start: x, end: x2});
   x = xDim.start;
   x2 = xDim.end;
-  const yDim = getChartDimensionByScale(yScale, {min: options.yMin, max: options.yMax, start: y, end: y2});
+  const yDim = getChartDimensionByScale(yScale, {min: options.yMin, max: options.yMax, start: y2, end: y});
   y = yDim.start;
   y2 = yDim.end;
 
@@ -91,44 +111,59 @@ export function getChartRect(chart, options) {
     x2,
     y2,
     width: x2 - x,
-    height: y2 - y
+    height: y2 - y,
+    centerX: x + (x2 - x) / 2,
+    centerY: y + (y2 - y) / 2
   };
 }
 
 /**
  * @param {Chart} chart
- * @param {PointAnnotationOptions} options
+ * @param {PointAnnotationOptions|PolygonAnnotationOptions} options
+ * @returns {AnnotationBoxModel}
  */
-export function getChartCircle(chart, options) {
-  const point = getChartPoint(chart, options);
-  return {
-    x: point.x + options.xAdjust,
-    y: point.y + options.yAdjust,
-    width: options.radius * 2,
-    height: options.radius * 2
-  };
-}
-
-/**
- * @param {Chart} chart
- * @param {PointAnnotationOptions} options
- * @returns
- */
-export function resolvePointPosition(chart, options) {
+export function resolvePointProperties(chart, options) {
   if (!isBoundToPoint(options)) {
-    const box = getChartRect(chart, options);
-    const point = getRectCenterPoint(box);
+    const box = resolveBoxProperties(chart, options);
     let radius = options.radius;
     if (!radius || isNaN(radius)) {
       radius = Math.min(box.width, box.height) / 2;
       options.radius = radius;
     }
+    const size = radius * 2;
     return {
-      x: point.x + options.xAdjust,
-      y: point.y + options.yAdjust,
-      width: radius * 2,
-      height: radius * 2
+      x: box.x + options.xAdjust,
+      y: box.y + options.yAdjust,
+      x2: box.x + size + options.xAdjust,
+      y2: box.y + size + options.yAdjust,
+      centerX: box.centerX + options.xAdjust,
+      centerY: box.centerY + options.yAdjust,
+      width: size,
+      height: size
     };
   }
   return getChartCircle(chart, options);
+}
+
+function getChartCircle(chart, options) {
+  const point = getChartPoint(chart, options);
+  const size = options.radius * 2;
+  return {
+    x: point.x - options.radius + options.xAdjust,
+    y: point.y - options.radius + options.yAdjust,
+    x2: point.x + options.radius + options.xAdjust,
+    y2: point.y + options.radius + options.yAdjust,
+    centerX: point.x + options.xAdjust,
+    centerY: point.y + options.yAdjust,
+    width: size,
+    height: size
+  };
+}
+
+function getChartDimensionByScale(scale, options) {
+  const result = getDimensionByScale(scale, options) || options;
+  return {
+    start: Math.min(result.start, result.end),
+    end: Math.max(result.start, result.end)
+  };
 }
