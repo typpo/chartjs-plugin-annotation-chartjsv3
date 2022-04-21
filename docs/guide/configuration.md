@@ -10,8 +10,8 @@ The following options are available at the top level. They apply to all annotati
 | ---- | ---- | :----: | ---- | ----
 | [`animations`](#animations) | `object` | No | [see here](#default-animations) | To configure which element properties are animated and how.
 | `clip` | `boolean` | No | `true` | Are the annotations clipped to the chartArea.
-| `dblClickSpeed` | `number` | Yes | `350` | Time to detect a double click in ms.
 | `drawTime` | `string` | Yes | `'afterDatasetsDraw'` | See [drawTime](options#draw-time).
+| [`interaction`](options#interaction) | `Object` | No | `options.interaction` | To configure which events trigger plugin interactions
 
 :::warning
 
@@ -54,16 +54,21 @@ const options = {
 
 | Name | Option | Value
 | ---- | ---- | ----
-| `numbers` | `properties` | `['x', 'y', 'x2', 'y2', 'width', 'height', 'pointX', 'pointY', 'labelX', 'labelY', 'labelWidth', 'labelHeight', 'radius']`
+| `numbers` | `properties` | `['x', 'y', 'x2', 'y2', 'width', 'height', 'centerX', 'centerY', 'pointX', 'pointY', 'labelX', 'labelY', 'labelWidth', 'labelHeight', 'radius']`
 | `numbers` | `type` | `number`
 
 ## Events
 
 The following options are available for all annotation types. These options can be specified per annotation, or at the top level which apply to all annotations.
 
-| Name | Type | [Scriptable](options#scriptable-options) | Notes
-| ---- | ---- | :----: | ----
-| `click` | `(context, event) => void` | No | Called when a single click occurs on the annotation.
-| `dblClick` | `(context, event) => void` | No | Called when a double click occurs on the annotation.
-| `enter` | `(context, event) => void` | No | Called when the mouse enters the annotation.
-| `leave` | `(context, event) => void` | No | Called when the mouse leaves the annotation.
+| Name | Type | Chart event<sup>1</sup> | Notes
+| ---- | ---- | ---- | ----
+| `click` | `(context, event) => boolean | void` | `'click'` | Called when a single click occurs on the annotation.
+| `enter` | `(context, event) => boolean | void` | `'mousemove'` | Called when the mouse enters the annotation.
+| `leave` | `(context, event) => boolean | void` | `'mousemove'` | Called when the mouse leaves the annotation.
+
+::: tip
+**<sup>1</sup>** [Chart.js events](https://www.chartjs.org/docs/latest/configuration/interactions.html#events) that need to be enabled in order to get the associated annotation event working. Note that by default Chart.js enables `'mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'`, meaning that annotation events work out-of-the-box.
+:::
+
+If the event callbacks explicitly returns `true`, the chart will re-render automatically after processing the event completely. This is important when there are the annotations that require re-draws (for instance, after a change of a rendering options).

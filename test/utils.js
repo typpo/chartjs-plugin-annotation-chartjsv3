@@ -19,7 +19,7 @@ export function getAnnotationElements(chart) {
   return window['chartjs-plugin-annotation']._getState(chart).elements;
 }
 
-export function scatter10x10(annotations) {
+export function scatterChart(xMax, yMax, annotations) {
   return window.acquireChart({
     type: 'scatter',
     options: {
@@ -28,12 +28,12 @@ export function scatter10x10(annotations) {
         x: {
           display: false,
           min: 0,
-          max: 10
+          max: xMax
         },
         y: {
           display: false,
           min: 0,
-          max: 10
+          max: yMax
         }
       },
       plugins: {
@@ -53,3 +53,109 @@ function keepInf(key, value) {
 export function stringifyObject(obj) {
   return JSON.stringify(obj, keepInf).replaceAll('"', '').replaceAll(':', ': ').replaceAll(',', ', ');
 }
+
+export const interactionData = [{
+  mode: 'point',
+  axes: {
+    xy: {
+      intersect: {
+        true: [1, 2, 2, 1, 0, 0],
+        false: [1, 2, 2, 1, 0, 0]
+      }
+    },
+    x: {
+      intersect: {
+        true: [1, 2, 2, 1, 0, 0],
+        false: [1, 2, 2, 1, 0, 0]
+      }
+    },
+    y: {
+      intersect: {
+        true: [1, 2, 2, 1, 0, 0],
+        false: [1, 2, 2, 1, 0, 0]
+      }
+    },
+    r: { // not supported, use xy
+      intersect: {
+        true: [1, 2, 2, 1, 0, 0],
+        false: [1, 2, 2, 1, 0, 0]
+      }
+    }
+  },
+}, {
+  mode: 'nearest',
+  axes: {
+    xy: {
+      intersect: {
+        true: [1, 1, 1, 1, 0, 0],
+        false: [1, 1, 1, 1, 1, 1]
+      }
+    },
+    x: {
+      intersect: {
+        true: [1, 1, 1, 1, 0, 0],
+        false: [1, 1, 1, 1, 0, 1]
+      }
+    },
+    y: {
+      intersect: {
+        true: [1, 1, 1, 1, 0, 0],
+        false: [1, 1, 1, 1, 1, 0]
+      }
+    },
+    r: { // not supported, use xy
+      intersect: {
+        true: [1, 1, 1, 1, 0, 0],
+        false: [1, 1, 1, 1, 1, 1]
+      }
+    }
+  }
+}, {
+  mode: 'x',
+  axes: {
+    x: {
+      intersect: {
+        true: [1, 2, 2, 1, 0, 0],
+        false: [1, 2, 2, 1, 0, 1]
+      }
+    }
+  }
+}, {
+  mode: 'y',
+  axes: {
+    y: {
+      intersect: {
+        true: [1, 2, 2, 1, 0, 0],
+        false: [2, 2, 2, 2, 2, 0]
+      }
+    }
+  }
+}, {
+  mode: 'dataset', // not supported, use nearest
+  axes: {
+    xy: {
+      intersect: {
+        true: [1, 1, 1, 1, 0, 0],
+        false: [1, 1, 1, 1, 1, 1]
+      }
+    },
+    x: {
+      intersect: {
+        true: [1, 1, 1, 1, 0, 0],
+        false: [1, 1, 1, 1, 0, 1]
+      }
+    },
+    y: {
+      intersect: {
+        true: [1, 1, 1, 1, 0, 0],
+        false: [1, 1, 1, 1, 1, 0]
+      }
+    },
+    r: { // not supported, use xy
+      intersect: {
+        true: [1, 1, 1, 1, 0, 0],
+        false: [1, 1, 1, 1, 1, 1]
+      }
+    }
+  }
+}];

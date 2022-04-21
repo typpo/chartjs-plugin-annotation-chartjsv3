@@ -26,7 +26,7 @@ module.exports = {
               borderColor: 'blue',
               borderWidth: 4,
               label: {
-                enabled: true,
+                display: true,
                 backgroundColor: 'white',
                 content: 'remove start'
               },
@@ -34,15 +34,15 @@ module.exports = {
                 length: 30,
                 width: 15,
                 start: {
-                  enabled: true,
+                  display: true,
                 },
                 end: {
-                  enabled: true,
+                  display: true,
                 }
               },
-              click({chart, element}) {
+              click({element}) {
                 delete element.options.arrowHeads.start;
-                chart.draw();
+                return true;
               }
             },
             {
@@ -54,7 +54,7 @@ module.exports = {
               borderColor: 'purple',
               borderWidth: 4,
               label: {
-                enabled: true,
+                display: true,
                 backgroundColor: 'white',
                 content: 'remove end'
               },
@@ -62,15 +62,15 @@ module.exports = {
                 length: 30,
                 width: 15,
                 start: {
-                  enabled: true,
+                  display: true,
                 },
                 end: {
-                  enabled: true,
+                  display: true,
                 }
               },
-              click({chart, element}) {
+              click({element}) {
                 delete element.options.arrowHeads.end;
-                chart.draw();
+                return true;
               }
             },
             {
@@ -82,7 +82,7 @@ module.exports = {
               borderColor: 'red',
               borderWidth: 4,
               label: {
-                enabled: true,
+                display: true,
                 backgroundColor: 'white',
                 content: 'remove start and end'
               },
@@ -90,16 +90,16 @@ module.exports = {
                 length: 30,
                 width: 15,
                 start: {
-                  enabled: true,
+                  display: true,
                 },
                 end: {
-                  enabled: true,
+                  display: true,
                 }
               },
-              click({chart, element}) {
+              click({element}) {
                 delete element.options.arrowHeads.start;
                 delete element.options.arrowHeads.end;
-                chart.draw();
+                return true;
               }
             }
           ]

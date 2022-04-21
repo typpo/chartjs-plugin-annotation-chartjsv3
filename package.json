@@ -2,7 +2,7 @@
   "name": "chartjs-plugin-annotation",
   "homepage": "https://www.chartjs.org/chartjs-plugin-annotation/index",
   "description": "Annotations for Chart.js",
-  "version": "1.2.2",
+  "version": "1.4.0",
   "author": "Evert Timberg <evert.timberg@gmail.com>",
   "license": "MIT",
   "main": "dist/chartjs-plugin-annotation.js",
@@ -22,15 +22,15 @@
     "dev:ff": "karma start --auto-watch --no-single-run --browsers firefox",
     "docs": "npm run build && vuepress build docs --no-cache",
     "docs:dev": "npm run build && vuepress dev docs --no-cache",
-    "lint": "concurrently \"npm:lint-*\"",
+    "lint": "concurrently --group \"npm:lint-*\"",
     "lint-js": "eslint \"test/**/*.js\" \"src/**/*.js\"",
     "lint-md": "eslint \"**/*.md\"",
     "lint-types": "eslint \"types/**/*.ts\" && tsc -p types/tests/",
-    "test": "cross-env NODE_ENV=test concurrently \"npm:test-*\"",
-    "test-integration": "mocha --full-trace test/integration/*-test.js",
+    "test": "cross-env NODE_ENV=test concurrently --group \"npm:test-*\"",
     "test-karma": "karma start --auto-watch --single-run",
     "test-lint": "npm run lint",
-    "test-types": "tsc -p types/tests/"
+    "test-types": "tsc -p types/tests/",
+    "test-types-integration": "mocha --full-trace test/integration/*-test.js"
   },
   "devDependencies": {
     "@rollup/plugin-json": "^4.1.0",
@@ -38,10 +38,10 @@
     "@simonbrunel/vuepress-plugin-versions": "^0.2.0",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",
-    "chart.js": "^3.1.0",
+    "chart.js": "^3.7.0",
     "chartjs-plugin-autocolors": "^0.0.5",
-    "chartjs-test-utils": "^0.3.0",
-    "concurrently": "^6.0.2",
+    "chartjs-test-utils": "^0.4.0",
+    "concurrently": "^7.0.0",
     "cross-env": "^7.0.3",
     "eslint": "^8.2.0",
     "eslint-config-chartjs": "^0.3.0",
@@ -68,6 +68,6 @@
     "vuepress-theme-chartjs": "^0.2.0"
   },
   "peerDependencies": {
-    "chart.js": "^3.1.0"
+    "chart.js": "^3.7.0"
   }
 }

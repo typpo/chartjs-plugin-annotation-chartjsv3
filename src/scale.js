@@ -1,8 +1,20 @@
 import ChartJsV3 from 'chart.js-v3';
 const {isFinite, valueOrDefault, defined} = ChartJsV3.helpers;
+import {retrieveScaleID} from './helpers';
 
+/**
+ * @typedef { import("chart.js").Chart } Chart
+ * @typedef { import("chart.js").Scale } Scale
+ * @typedef { import('../../types/options').CoreAnnotationOptions } CoreAnnotationOptions
+ */
+
+/**
+ * @param {Chart} chart
+ * @param {Scale} scale
+ * @param {CoreAnnotationOptions[]} annotations
+ */
 export function adjustScaleRange(chart, scale, annotations) {
-  const range = getScaleLimits(scale, annotations);
+  const range = getScaleLimits(chart.scales, scale, annotations);
   let changed = changeScaleLimit(scale, range, 'min', 'suggestedMin');
   changed = changeScaleLimit(scale, range, 'max', 'suggestedMax') || changed;
   if (changed && typeof scale.handleTickRangeOptions === 'function') {
@@ -10,6 +22,10 @@ export function adjustScaleRange(chart, scale, annotations) {
   }
 }
 
+/**
+ * @param {CoreAnnotationOptions[]} annotations
+ * @param {{ [key: string]: Scale }} scales
+ */
 export function verifyScaleOptions(annotations, scales) {
   for (const annotation of annotations) {
     verifyScaleIDs(annotation, scales);
@@ -30,13 +46,27 @@ function scaleLimitDefined(scaleOptions, limit, suggestedLimit) {
 
 function verifyScaleIDs(annotation, scales) {
   for (const key of ['scaleID', 'xScaleID', 'yScaleID']) {
-    if (annotation[key] && !scales[annotation[key]]) {
-      console.warn(`No scale found with id '${annotation[key]}' for annotation '${annotation.id}'`);
+    const scaleID = retrieveScaleID(scales, annotation, key);
+    if (scaleID && !scales[scaleID] && verifyProperties(annotation, key)) {
+      console.warn(`No scale found with id '${scaleID}' for annotation '${annotation.id}'`);
     }
   }
 }
 
-function getScaleLimits(scale, annotations) {
+function verifyProperties(annotation, key) {
+  if (key === 'scaleID') {
+    return true;
+  }
+  const axis = key.charAt(0);
+  for (const prop of ['Min', 'Max', 'Value']) {
+    if (defined(annotation[axis + prop])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getScaleLimits(scales, scale, annotations) {
   const axis = scale.axis;
   const scaleID = scale.id;
   const scaleIDOption = axis + 'ScaleID';
@@ -47,7 +77,7 @@ function getScaleLimits(scale, annotations) {
   for (const annotation of annotations) {
     if (annotation.scaleID === scaleID) {
       updateLimits(annotation, scale, ['value', 'endValue'], limits);
-    } else if (annotation[scaleIDOption] === scaleID) {
+    } else if (retrieveScaleID(scales, annotation, scaleIDOption) === scaleID) {
       updateLimits(annotation, scale, [axis + 'Min', axis + 'Max', axis + 'Value'], limits);
     }
   }
